@@ -9,9 +9,14 @@
 
 - Đây là fork của Eigent, không phải dự án MausBot; repository có ứng dụng desktop React/TypeScript/Electron và backend Python.
 - Backend khai báo Python >=3.11,<3.12. README ghi nhận 12 nhóm tài nguyên giao diện tiếng Việt nhưng bản dịch mới là một phần; chưa xác nhận mức phủ 100%.
-- Repository có các lệnh npm run check:i18n, npm run type-check, npm test và workflow GitHub Actions. Lần chạy Test #5 trên commit nền còn in_progress tại thời điểm kiểm kê; trạng thái này không chứng minh thay đổi trên nhánh mới.
 - Backend có cơ chế đồng bộ resources/example-skills vào thư mục Skills của người dùng và SkillToolkit để phát hiện Skills. Skill xlsx tổng quát đã có.
 - Chưa có bằng chứng trong lần kiểm kê này rằng giao diện kế toán, 10 Agent kế toán hoặc 15 Skill nghiệp vụ đã hoàn thành.
+
+## Kết quả Actions trên commit nền
+
+Workflow Test #5, run 44774491335, hoàn tất với kết quả failure. Trong job Frontend Guardrails, 52/53 tệp test đạt và 1.112/1.113 test đạt. Test lỗi là test/unit/components/ChatBox.spaceModelSelection.test.tsx — “offers Cancel but not Resume after a write with an unknown outcome”. Các job Browser Preview Electron, Python Tests và Web + Local Brain Smoke đều thành công.
+
+Đây là trạng thái của commit nền main trước khi có Skill rà soát Excel; không gán lỗi này cho nhánh phát triển.
 
 ## Lát cắt đầu tiên trên nhánh phát triển
 
@@ -23,11 +28,11 @@ Nhánh codex/accounting-workbook-audit-mvp bổ sung Skill accounting-workbook-a
 - Kiểm thử bằng workbook giả lập, không dùng dữ liệu doanh nghiệp.
 - Có workflow CI riêng chỉ chạy bộ kiểm thử của Skill.
 
-Đây là một công cụ rà soát cấu trúc dữ liệu. Nó không phải kết luận kế toán, kiểm toán, pháp lý, thuế hoặc BHXH.
+Workflow Accounting workbook audit run 2 (44777831156) đã thành công với 6/6 test. Đây là kết quả của bộ test Skill, không thay thế kiểm thử toàn bộ ứng dụng.
 
 ## Việc cần kiểm kê tiếp
 
-1. Chạy và ghi kết quả từng workflow trên nhánh phát triển.
+1. Theo dõi workflow trên PR sau mỗi cập nhật nhánh.
 2. Đối chiếu khóa và cấu trúc của 12 nhóm locale Việt với locale nguồn.
 3. Kiểm tra các chuỗi giao diện viết trực tiếp trong mã và các bề mặt Electron.
 4. Lần theo điểm mở rộng chính thức cho Space, điều hướng và đăng ký Agent trước khi thêm UI kế toán.

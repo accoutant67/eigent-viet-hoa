@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import sys
 import tempfile
@@ -219,11 +221,14 @@ class WorkbookAuditTests(unittest.TestCase):
             "--required-column",
             "Tên",
         ]
-        self.assertEqual(main(args), 0)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(main(args), 0)
         parsed = json.loads(output.read_text(encoding="utf-8"))
         self.assertEqual(parsed["tool"], "accounting-workbook-audit")
-        self.assertEqual(main(args), 2)
-        self.assertEqual(main(args + ["--force"]), 0)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(main(args), 2)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(main(args + ["--force"]), 0)
 
     def test_rejects_non_xlsx_input(self) -> None:
         csv_file = self.root / "source.csv"
