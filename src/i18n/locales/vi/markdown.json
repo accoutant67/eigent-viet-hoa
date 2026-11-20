@@ -1,8 +1,8 @@
 {
-  "code": "Code",
-  "copied": "Copied",
+  "code": "Bộ mã",
+  "copied": "Đang sao chép",
   "copy-code": "Sao chép",
-  "copy-text": "Copy text",
+  "copy-text": "Chép đoạn",
   "show-less-code": "Thu gọn",
   "show-more-code": "Hiển thị thêm"
 }

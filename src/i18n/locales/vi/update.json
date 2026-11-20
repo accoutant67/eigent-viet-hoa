@@ -1,15 +1,15 @@
 {
-  "update-check-failed": "Update check failed",
-  "new-version-available": "New version available",
+  "update-check-failed": "Cập nhật lại việc kiểm tra bị lỗi",
+  "new-version-available": "Phiên bản mới sẵn sàng",
   "update": "Cập nhật",
   "download": "Tải xuống",
-  "update-error": "Update error",
-  "downloading-update": "Downloading update",
-  "complete": "Complete",
-  "download-completed": "Download completed",
-  "click-to-install-update": "Click to install update",
-  "install": "Install",
-  "downloading": "Downloading update",
-  "launch-new-version": "Launch new version",
-  "update-failed-retry": "Update failed — click to retry"
+  "update-error": "Lỗi cập nhật",
+  "downloading-update": "Đang tải về bản cập nhật",
+  "complete": "Hoàn tất",
+  "download-completed": "Tải về",
+  "click-to-install-update": "Nhấn vào để cài đặt cập nhật",
+  "install": "Cài đặt",
+  "downloading": "Đang tải về bản cập nhật",
+  "launch-new-version": "Khởi chạy phiên bản mới",
+  "update-failed-retry": "Cập nhật thất bại — Nhấn vào để thử lại"
 }
