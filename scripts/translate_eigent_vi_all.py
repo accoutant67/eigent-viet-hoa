@@ -115,7 +115,15 @@ def should_translate(part):
     value = part.strip()
     return bool(
         value and re.search(r"[a-zA-Z]", value)
-        and not TECH.fullmatch(value)
+        and not (
+            TECH.fullmatch(value)
+            and (
+                value in {"AI", "API", "MCP", "GPT", "LLM", "JSON", "XML", "CSV",
+                          "PDF", "HTML", "CSS", "SQL", "SSO", "HTTP", "HTTPS",
+                          "URL", "SDK", "ID", "CPU", "GPU", "UUID", "JWT"}
+                or bool(re.search(r"[0-9_./:@+#%=\\-]", value))
+            )
+        )
         and not re.fullmatch(r"[\w@/+\-]+(?:[.:/][\w@/+\-]+)+", value)
         and not value.startswith(("data:", "file:", "npm ", "git "))
     )
