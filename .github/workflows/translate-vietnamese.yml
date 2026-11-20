@@ -2,6 +2,10 @@ name: "🇻🇳 Việt hóa toàn bộ giao diện Eigent"
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/translate-vietnamese.yml'
+      - 'scripts/translate_eigent_vi_all.py'
 
 permissions:
   contents: write
