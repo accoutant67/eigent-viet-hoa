@@ -33,6 +33,10 @@ jobs:
         env:
           SKIP: no-commit-to-branch,bandit-full
 
+      - name: Show hook edits when pre-commit fails
+        if: failure()
+        run: git diff -- backend
+
       - name: Run full backend Bandit scan
         run: >-
           uv run --project backend pre-commit run bandit-full
