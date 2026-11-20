@@ -1,0 +1,41 @@
+name: Accounting workbook audit
+
+'on':
+  push:
+    branches:
+      - main
+      - 'codex/**'
+    paths:
+      - 'resources/example-skills/accounting-workbook-audit/**'
+      - '.github/workflows/accounting-workbook-audit.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'resources/example-skills/accounting-workbook-audit/**'
+      - '.github/workflows/accounting-workbook-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accounting-workbook-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run synthetic workbook tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run read-only workbook audit tests
+        run: python -m unittest discover -s resources/example-skills/accounting-workbook-audit/tests -v
