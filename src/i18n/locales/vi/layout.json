@@ -685,7 +685,7 @@
     "hide": "Hide {appName}",
     "hideOthers": "Hide Others",
     "showAll": "Show All",
-    "quit": "Thoát",
+    "quit": "Thoát {appName}",
     "newProject": "Phiên mới",
     "closeWindow": "Close Window",
     "exit": "Exit",
