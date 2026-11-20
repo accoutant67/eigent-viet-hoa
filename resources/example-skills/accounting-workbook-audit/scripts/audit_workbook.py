@@ -21,7 +21,7 @@ PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
 MAX_XML_ENTRY_BYTES = 128 * 1024 * 1024
 MAX_FINDINGS_PER_KIND = 200
-CELL_REF_RE = re.compile(r"^\\$?([A-Z]+)\\$?(\\d+)$", re.IGNORECASE)
+CELL_REF_RE = re.compile(r"^\$?([A-Z]+)\$?(\d+)$", re.IGNORECASE)
 ZERO_FORMAT_RE = re.compile(r"0+")
 
 
@@ -133,14 +133,14 @@ def _display_value(
         except ValueError:
             style_index = 0
         number_format = style_formats.get(style_index, "").split(";")[0]
-        if ZERO_FORMAT_RE.fullmatch(number_format) and re.fullmatch(r"\\d+", value):
+        if ZERO_FORMAT_RE.fullmatch(number_format) and re.fullmatch(r"\d+", value):
             value = value.zfill(len(number_format))
 
     return value, formula is not None, error_code
 
 
 def _worksheet_path(target: str) -> str:
-    target = target.replace("\\\\", "/")
+    target = target.replace("\\", "/")
     path = target.lstrip("/") if target.startswith("/") else posixpath.normpath(posixpath.join("xl", target))
     if path.startswith("../") or not path.startswith("xl/"):
         raise WorkbookAuditError("Workbook contains an invalid worksheet path.")
@@ -177,7 +177,7 @@ def _workbook_sheets(archive: zipfile.ZipFile) -> list[tuple[str, str, bool]]:
 
 
 def _normalize_header(value: str) -> str:
-    return re.sub(r"\\s+", " ", value).strip().casefold()
+    return re.sub(r"\s+", " ", value).strip().casefold()
 
 
 def _collect_sheet(
@@ -492,7 +492,7 @@ def write_report(report: dict, output_path: str | Path, *, force: bool = False) 
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
-            newline="\\n",
+            newline="\n",
             prefix=f".{destination.name}.",
             suffix=".tmp",
             dir=destination.parent,
@@ -500,7 +500,7 @@ def write_report(report: dict, output_path: str | Path, *, force: bool = False) 
         ) as temporary:
             temporary_path = Path(temporary.name)
             json.dump(report, temporary, ensure_ascii=False, indent=2)
-            temporary.write("\\n")
+            temporary.write("\n")
             temporary.flush()
             os.fsync(temporary.fileno())
         os.replace(temporary_path, destination)
