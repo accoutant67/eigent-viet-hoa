@@ -345,7 +345,7 @@ def _audit_sheet(
                     {"row": row_number, "column": column_name},
                 )
 
-        if resolved_keys:
+        if key_columns and len(resolved_keys) == len(key_columns):
             key = tuple(cell_map.get(column, "").strip() for _, column in resolved_keys)
             if all(key):
                 first_key_row = duplicate_keys_seen.get(key)

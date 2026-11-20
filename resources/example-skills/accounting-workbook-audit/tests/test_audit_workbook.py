@@ -202,6 +202,18 @@ class WorkbookAuditTests(unittest.TestCase):
         self.assertNotIn("Trùng tên", json.dumps(report, ensure_ascii=False))
         self.assertNotIn("Nguyễn An", json.dumps(report, ensure_ascii=False))
 
+    def test_missing_part_of_composite_key_does_not_use_partial_key(self) -> None:
+        report = audit_workbook(
+            self.workbook,
+            key_columns=["Mã NV", "CCCD"],
+        )
+        sheet = report["sheets"][0]
+        self.assertEqual(sheet["finding_counts"]["duplicate_keys"], 0)
+        self.assertEqual(
+            sheet["findings"]["missing_columns"],
+            [{"column": "CCCD", "purpose": "key", "reason": "not_found"}],
+        )
+
     def test_missing_headers_are_reported_without_guessing(self) -> None:
         report = audit_workbook(
             self.workbook,

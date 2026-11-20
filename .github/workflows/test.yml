@@ -74,6 +74,9 @@ jobs:
       - name: Run type check
         run: npm run type-check
 
+      - name: Check i18n locale parity and usage
+        run: npm run check:i18n
+
       - name: Check Electron Access Guard
         run: bash scripts/check-electron-access.sh
 

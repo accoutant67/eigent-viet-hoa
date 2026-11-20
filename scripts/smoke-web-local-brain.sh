@@ -127,6 +127,33 @@ assert "capabilities" in payload, "health detail missing capabilities"
 assert isinstance(payload["capabilities"], dict), "capabilities must be object"
 PY
 
+echo "[smoke] checking bundled accounting Skill through backend API"
+curl --silent --show-error --fail \
+  --header "X-Channel: web" \
+  --output "${TMP_DIR}/skills.json" \
+  "http://${BRAIN_HOST}:${BRAIN_PORT}/skills"
+curl --silent --show-error --fail \
+  --header "X-Channel: web" \
+  --output "${TMP_DIR}/skill_files.json" \
+  "http://${BRAIN_HOST}:${BRAIN_PORT}/skills/accounting-workbook-audit/files"
+python3 - "${TMP_DIR}/skills.json" "${TMP_DIR}/skill_files.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+skills_payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+matches = [
+    item for item in skills_payload["skills"]
+    if item["name"] == "accounting-workbook-audit"
+]
+assert len(matches) == 1, "accounting Skill must appear exactly once"
+assert matches[0]["isExample"] is True, "accounting Skill must be bundled"
+files_payload = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+paths = {item["path"] for item in files_payload["files"]}
+assert {"SKILL.md", "scripts/audit_workbook.py"} <= paths, paths
+print("[smoke] PASS: backend lists one bundled accounting Skill and its CLI")
+PY
+
 echo "[smoke] starting web frontend on ${WEB_HOST}:${WEB_PORT}"
 (
   cd "${ROOT_DIR}"
