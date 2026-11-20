@@ -11,9 +11,6 @@ name: Accounting workbook audit
   pull_request:
     branches:
       - main
-    paths:
-      - 'resources/example-skills/accounting-workbook-audit/**'
-      - '.github/workflows/accounting-workbook-audit.yml'
   workflow_dispatch:
 
 permissions:
