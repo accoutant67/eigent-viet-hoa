@@ -1,0 +1,57 @@
+name: "🇻🇳 Việt hóa toàn bộ giao diện Eigent"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: eigent-vietnamese-translation
+  cancel-in-progress: false
+
+jobs:
+  translate-vietnamese:
+    if: github.repository == 'accoutant67/eigent-viet-hoa'
+    name: "Dịch mọi chuỗi còn tiếng Anh sang Tiếng Việt"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: "Tải mã nguồn"
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: "Cài đặt Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: "Cài PyTorch CPU"
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+
+      - name: "Cài mô hình dịch Anh–Việt"
+        run: python -m pip install transformers==4.46.3 sentencepiece==0.2.0 sacremoses==0.1.1
+
+      - name: "Kiểm tra bộ ngôn ngữ trước khi dịch"
+        run: python scripts/translate_eigent_vi_all.py --check-only
+
+      - name: "Dịch các chuỗi tiếng Anh còn lại"
+        run: python scripts/translate_eigent_vi_all.py
+
+      - name: "Kiểm tra cấu trúc bản dịch"
+        run: |
+          python scripts/translate_eigent_vi_all.py --check-only
+          git diff --check
+
+      - name: "Cập nhật bản dịch tiếng Việt lên dự án"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/i18n/locales/vi/
+          if ! git diff --cached --quiet; then
+            git commit -m "feat(i18n): translate remaining Eigent frontend strings into Vietnamese"
+            git push origin HEAD:main
+          else
+            echo "Không còn chuỗi mới cần dịch."
+          fi
