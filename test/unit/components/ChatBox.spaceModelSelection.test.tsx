@@ -13,6 +13,7 @@
 // ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 import ChatBox from '@/components/ChatBox';
+import enUs from '@/i18n/locales/en-us/index';
 import { getAccountEnvironmentKey } from '@/lib/authEnvironment';
 import { localErrorMessage } from '@/lib/localError';
 import { notifyError } from '@/lib/notifyError';
@@ -1103,13 +1104,14 @@ describe('ChatBox after an accepted Space model selection', () => {
     ];
     await renderChat();
 
+    // test/setup.ts renders useTranslation with en-US product copy.
     expect(
-      screen.getByText(i18next.t('chat.run-resume-unsafe-blocked'))
+      screen.getByText(enUs.chat['run-resume-unsafe-blocked'])
     ).toBeInTheDocument();
     expect(screen.queryByText(/Resuming picks up from there/)).toBeNull();
     expect(screen.getByRole('button', { name: /^Resume$/i })).toBeDisabled();
     expect(
-      screen.getByRole('button', { name: i18next.t('chat.run-cancel') })
+      screen.getByRole('button', { name: enUs.chat['run-cancel'] })
     ).toBeEnabled();
     expect(mocks.post).not.toHaveBeenCalled();
   });
