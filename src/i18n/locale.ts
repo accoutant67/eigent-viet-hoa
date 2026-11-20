@@ -16,6 +16,7 @@ export enum LocaleEnum {
   SimplifiedChinese = 'zh-Hans',
   TraditionalChinese = 'zh-Hant',
   English = 'en-US',
+  Vietnamese = 'vi',
   German = 'de',
   Korean = 'ko',
   Japanese = 'ja',
@@ -35,6 +36,7 @@ const BASE_LANGUAGE_LOCALES: Readonly<Record<string, LocaleEnum>> = {
   ja: LocaleEnum.Japanese,
   ko: LocaleEnum.Korean,
   ru: LocaleEnum.Russian,
+  vi: LocaleEnum.Vietnamese,
 };
 
 /**

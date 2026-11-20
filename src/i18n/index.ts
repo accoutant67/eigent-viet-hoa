@@ -22,11 +22,13 @@ export { LocaleEnum, resolveLocale } from './locale';
 
 const { language } = getAuthStore();
 
-const systemLanguage = resolveLocale(navigator.language);
+const systemLanguage = resolveLocale(navigator.language, LocaleEnum.Vietnamese);
 const initialLanguage =
-  language && language !== 'system'
-    ? resolveLocale(language, systemLanguage)
-    : systemLanguage;
+  language === 'system'
+    ? systemLanguage
+    : language
+      ? resolveLocale(language, LocaleEnum.Vietnamese)
+      : LocaleEnum.Vietnamese;
 
 i18n.use(initReactI18next).init({
   resources,

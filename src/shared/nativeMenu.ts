@@ -16,6 +16,7 @@ export const NATIVE_MENU_LOCALE_CHANNEL = 'native-menu:set-locale' as const;
 
 export const NATIVE_MENU_LOCALES = [
   'en-US',
+  'vi',
   'zh-Hans',
   'zh-Hant',
   'de',
@@ -46,6 +47,7 @@ export function normalizeNativeMenuLocale(
     return /(?:hant|tw|hk|mo)/.test(normalized) ? 'zh-Hant' : 'zh-Hans';
   }
   if (normalized.startsWith('en')) return 'en-US';
+  if (normalized === 'vi' || normalized.startsWith('vi-')) return 'vi';
 
   const language = normalized.split('-')[0];
   return isNativeMenuLocale(language) ? language : null;

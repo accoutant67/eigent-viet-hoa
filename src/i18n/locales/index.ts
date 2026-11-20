@@ -15,6 +15,7 @@
 import ar from './ar';
 import de from './de';
 import en from './en-us/index';
+import vi from './vi/index';
 import es from './es/index';
 import fr from './fr';
 import it from './it';
@@ -27,6 +28,9 @@ import zh_Hant from './zh-Hant/index';
 export const resources = {
   'en-US': {
     translation: en,
+  },
+  vi: {
+    translation: vi,
   },
   'zh-Hans': {
     translation: zh_Hans,

@@ -80,6 +80,7 @@ function formatCredits(value: unknown): string {
 const LANGUAGE_OPTIONS: { key: string; label: string }[] = [
   { key: 'system', label: '' },
   { key: LocaleEnum.English, label: 'English' },
+  { key: LocaleEnum.Vietnamese, label: 'Tiếng Việt' },
   { key: LocaleEnum.SimplifiedChinese, label: '简体中文' },
   { key: LocaleEnum.TraditionalChinese, label: '繁體中文' },
   { key: LocaleEnum.Japanese, label: '日本語' },

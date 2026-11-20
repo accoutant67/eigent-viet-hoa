@@ -56,6 +56,7 @@ const LAST_STEP: Step = 4;
 const LANGUAGE_OPTIONS = [
   { key: 'system', nativeLabel: null },
   { key: LocaleEnum.English, nativeLabel: 'English' },
+  { key: LocaleEnum.Vietnamese, nativeLabel: 'Tiếng Việt' },
   { key: LocaleEnum.SimplifiedChinese, nativeLabel: '中文（简体）' },
   { key: LocaleEnum.TraditionalChinese, nativeLabel: '中文（繁體）' },
   { key: LocaleEnum.Japanese, nativeLabel: '日本語' },

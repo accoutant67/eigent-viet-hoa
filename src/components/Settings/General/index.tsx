@@ -92,6 +92,10 @@ export default function SettingGeneral({
       label: 'English',
     },
     {
+      key: LocaleEnum.Vietnamese,
+      label: 'Tiếng Việt',
+    },
+    {
       key: LocaleEnum.SimplifiedChinese,
       label: '简体中文',
     },

@@ -15,6 +15,7 @@
 import arLayout from '../../../src/i18n/locales/ar/layout.json';
 import deLayout from '../../../src/i18n/locales/de/layout.json';
 import enLayout from '../../../src/i18n/locales/en-us/layout.json';
+import viLayout from '../../../src/i18n/locales/vi/layout.json';
 import esLayout from '../../../src/i18n/locales/es/layout.json';
 import frLayout from '../../../src/i18n/locales/fr/layout.json';
 import itLayout from '../../../src/i18n/locales/it/layout.json';
@@ -45,6 +46,7 @@ const catalogs = {
   it: itLayout.nativeMenu,
   ar: arLayout.nativeMenu,
   es: esLayout.nativeMenu,
+  vi: viLayout.nativeMenu,
 } satisfies Record<NativeMenuLocale, NativeMenuMessages>;
 
 export function resolveNativeMenuLocale(value: string): NativeMenuLocale {
@@ -87,6 +89,7 @@ export function getNativeQuitMessages(locale: string, unknown: boolean) {
     it: itLayout,
     ar: arLayout,
     es: esLayout,
+    vi: viLayout,
   };
   const layout = layouts[resolveNativeMenuLocale(locale)];
   return {

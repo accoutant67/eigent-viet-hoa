@@ -48,6 +48,7 @@ const expectedLocales = [
   'ja',
   'ko',
   'ru',
+  'vi',
   'zh-Hans',
   'zh-Hant',
 ].sort();
@@ -79,6 +80,7 @@ const localeLanguageTags = {
   ja: 'ja',
   ko: 'ko',
   ru: 'ru',
+  vi: 'vi',
   'zh-Hans': 'zh-Hans',
   'zh-Hant': 'zh-Hant',
 };
