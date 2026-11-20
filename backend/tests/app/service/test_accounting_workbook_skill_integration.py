@@ -1,7 +1,7 @@
 """Exercise the real bundled accounting Skill through Eigent's Skill service."""
 
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import pytest
 
@@ -12,10 +12,7 @@ pytestmark = pytest.mark.unit
 
 SKILL_NAME = "accounting-workbook-audit"
 BUNDLED_SKILL = (
-    Path(__file__).resolve().parents[4]
-    / "resources"
-    / "example-skills"
-    / SKILL_NAME
+    Path(__file__).resolve().parents[4] / "resources" / "example-skills" / SKILL_NAME
 )
 
 
@@ -32,16 +29,14 @@ def test_accounting_skill_is_discovered_once_and_scoped(
         skill_config_service, "EIGENT_ROOT", tmp_path / "home" / ".eigent"
     )
 
-    found = [
-        item for item in skill_service.skills_scan()
-        if item["name"] == SKILL_NAME
-    ]
+    found = [item for item in skill_service.skills_scan() if item["name"] == SKILL_NAME]
     assert len(found) == 1
     assert found[0]["isExample"] is True
     assert found[0]["skillDirName"] == SKILL_NAME
     assert (installed / SKILL_NAME / "scripts" / "audit_workbook.py").is_file()
     assert {item["path"] for item in skill_service.skill_list_files(SKILL_NAME)} >= {
-        "SKILL.md", "scripts/audit_workbook.py"
+        "SKILL.md",
+        "scripts/audit_workbook.py",
     }
 
     config = skill_config_service.skill_config_init("synthetic_smoke_user")
