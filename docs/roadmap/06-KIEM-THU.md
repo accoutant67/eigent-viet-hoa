@@ -205,4 +205,49 @@ Lần smoke đầu cho TT80 Q4/2025 dừng ở assertion vì fixture law-watch t
 | Pre-commit           | `uvx --from pre-commit pre-commit run --config backend/.pre-commit-config.yaml --files ...`                             | Lần đầu Ruff format **FAIL do tự sửa 2 file Python**; chạy lại toàn bộ hook **PASS**. JSON, `py_compile`, `git diff --check` PASS.                                                       |
 | Nguồn live           | Law-watch `--check-source`, 21/11/2026 17:21 giờ Việt Nam                                                               | Truy cập 50 văn bản; 0 proposal; 13/14 tham chiếu PASS (cả 3 nguồn mới PASS); trang hướng dẫn CSDL Bộ Tài chính HTTPError (**BLOCKED**); `auto_applied=false`, metadata kỳ cũ không đổi. |
 
-Backend full suite và GitHub Actions trên nhánh cập nhật nguồn này chờ chạy sau khi tạo nhánh/PR; không dùng kết quả của PR #3 thay cho CI của thay đổi mới. GUI Eigent thật tiếp tục **BLOCKED**; đọc XML/PDF/ảnh hóa đơn, mẫu XLSX pháp định và XML schema vẫn **NOT STARTED**.
+Backend full suite và GitHub Actions trên nhánh cập nhật nguồn đã chạy trên head `849a362331bc7a57664b51cab85b70491a2d5422`; [Test 44897312794](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897312794) và [VAT 44897312793](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897312793) đều **PASS**. GUI Eigent thật tiếp tục **BLOCKED**; đọc XML/PDF/ảnh hóa đơn, workbook pháp định, XML schema vẫn **NOT STARTED**.
+
+
+## Kiểm thử/regression GTGT trên commit `849a362331bc7a57664b51cab85b70491a2d5422` — 21/11/2026
+
+### Môi trường
+
+- GitHub Actions trên Ubuntu 26.04.1; Python 3.11; Node.js 20. Workflow Test chạy đúng head `849a362331bc7a57664b51cab85b70491a2d5422`; VAT workflow kiểm tra cùng nhánh. Dữ liệu là fixture giả lập, không dùng hóa đơn hay thông tin doanh nghiệp thật.
+- [VAT workflow 44897312793](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897312793) và [Test workflow 44897312794](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897312794) đều **PASS**.
+
+### Kết quả lệnh và smoke
+
+| Kiểm tra | Lệnh / cách chạy | Kết quả và log |
+|---|---|---|
+| VAT unit | `python -m unittest discover -s resources/example-skills/accounting-vat-return/tests -p 'test_*.py' -v` | **PASS 36/36**; gồm period/source windows, giữ kỳ cũ và không tự áp dụng luật. |
+| VAT CLI E2E | `python resources/example-skills/accounting-vat-return/tests/smoke_cli.py` | **PASS**: import → classify → validate → aggregate → dự thảo TT80 Q4/2025 và TT89 Q3/2026 → kiểm tra độc lập → JSON + XLSX soát xét nội bộ. |
+| Law-watch regression | `python -m unittest discover -s resources/example-skills/accounting-law-watch/tests -p 'test_*.py' -v` | **PASS 15/15**; fixture phân biệt văn bản cũ/mới, kiểm tra ngày và giữ metadata kỳ đã duyệt. |
+| Law-watch fixture smoke | `python resources/example-skills/accounting-law-watch/tests/smoke_cli.py` | **PASS**: phát hiện proposal giả lập; dry-run không tạo Issue/đổi quy tắc. |
+| Excel regression | `python -m unittest discover -s resources/example-skills/accounting-workbook-audit/tests -p 'test_*.py' -v` | **PASS 8/8**; CLI smoke trên workbook giả lập PASS. |
+| Eigent Skill integration | `uv run pytest tests/app/service/test_accounting_vat_skill_integration.py -v` (working directory `backend`) | **PASS 1/1**; Skill được phát hiện một lần, bật được và tôn trọng scope. |
+| Backend full regression | `uv run pytest tests/app -v` (working directory `backend`) | **PASS 4.595**, **11 skipped**, **110 warnings**, **11 subtests**; 592,89 giây. Không có test fail. Warnings gồm deprecated `stream_accumulate`, mock coroutine chưa await ở một số test cũ và toolkit; chưa quy là lỗi mới của PR. |
+| ChatBox rollback | Vitest trên renderer rollback: `npx vitest run --config vitest.config.ts test/unit/components/ChatBox test/unit/store/chatStore.test.ts test/unit/store/restoredRunApproval.test.ts test/unit/store/chatEventProjectionBridge.test.ts` | **PASS 53/53 files, 1.113/1.113 tests**. Log có React `act` warnings và các lỗi được mô phỏng trong test như “insufficient credits”/“Brain is unreachable”; test hoàn tất thành công. |
+| Frontend/i18n | `npm run type-check`; `npm run check:i18n`; frontend guardrails và changed Vitest tests | **PASS**. |
+| Web + backend smoke | `bash scripts/smoke-web-local-brain.sh` | **PASS**: health/API, liệt kê Skills, web route. Có `curl: (7)` retry trong lúc backend/Vite khởi động; sau đó script báo PASS và thoát 0. |
+| Electron preview/relay | `xvfb-run --auto-servernum npm run test:preview-browser`; `xvfb-run --auto-servernum npm run test:stream-relay` | **PASS** cho preview/relay automation; không phải nghiệm thu GUI Eigent thật. |
+
+Log có cảnh báo Node action runtime deprecation và PostCSS; không có test thất bại. GUI Eigent thật, menu, đổi tiếng Việt bằng thao tác, màn Kế toán, Chat AI với model hợp lệ và quan sát JavaScript/Electron trực tiếp vẫn **BLOCKED**.
+
+### Lỗi kiểm thử và retest
+
+- Lượt đầu của tích hợp law-watch → VAT, job law-watch-only thiếu `defusedxml` trong khi test tích hợp import VAT. Đã chuyển test cross-Skill vào VAT workflow có dependency; law-watch workflow chạy độc lập lại.
+- Commit kế tiếp có assertion VAT cũ, kỳ vọng Luật 108 chỉ ràng buộc TT89. Đã sửa assertion theo cửa sổ nguồn được duyệt (từ kỳ 2026-Q1); NĐ254/TT91 vẫn thuộc cửa sổ TT89. Trên head hiện tại VAT 36/36, Skill integration 1/1 và toàn Test workflow PASS.
+- [Law-watch live workflow 44897224419](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897224419) chạy trên `ae3091dc060bbace7a4fc85c33a80c505e91cb96`. So sánh với `849a362` cho thấy commit sau chỉ sửa test VAT; watcher và registry không đổi.
+
+### Nguồn chính thức và phiên bản mẫu
+
+- Trang Chính phủ xác nhận TT89/2026/TT-BTC ban hành 30/06/2026, hiệu lực 01/07/2026, có tệp ký số và tệp đính chính: [Cổng văn bản Chính phủ — TT89/2026/TT-BTC](https://vanban.chinhphu.vn/?docid=218974&pageid=27160).
+- Tệp đính chính được đối chiếu với QĐ2551/QĐ-BTC đã có trong registry dưới `congbao_correction_2551_2026`, có cửa sổ nguồn từ 15/09/2026 và là nguồn bắt buộc của phiên bản TT89. Công báo ghi QĐ2551 là văn bản đính chính TT89, ban hành/hiệu lực 15/09/2026: [Công báo Chính phủ — QĐ2551/QĐ-BTC](https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm). Catalog ghi nhận danh sách tên mẫu được sửa không gồm 01/GTGT; không đổi công thức/mapping.
+- Cổng Chính phủ xác nhận Luật 09/2026/QH16 hiệu lực 24/04/2026 và NĐ144/2026/NĐ-CP hiệu lực 20/06/2026, sửa NĐ181 như đã sửa bởi NĐ359. Phạm vi điều khoản và ảnh hưởng tờ khai vẫn cần người chuyên môn duyệt: [Luật 09/2026/QH16](https://vanban.chinhphu.vn/?docid=218095&pageid=27160), [NĐ144/2026/NĐ-CP](https://vanban.chinhphu.vn/?docid=218020&pageid=27160).
+- Law-watch live: **22/23 tham chiếu PASS**, **1 BLOCKED** (`mof_vbpq_official_database_guide`, lỗi truy cập `URLError`). **20/20 nguồn bắt buộc TT89 Q3/2026 PASS**; 0 proposal; publisher dry-run tạo 0 Issue; `auto_applied=false`; metadata kỳ cũ không đổi.
+
+### Chưa kiểm thử/chưa triển khai
+
+- **BLOCKED:** GUI Eigent thật và Chat AI với model hợp lệ; preview Electron không thay thế.
+- **NOT STARTED:** đọc hóa đơn XML/PDF/ảnh; workbook pháp định giữ định dạng; phụ lục GTGT; XML theo schema; khai bổ sung, ký/nộp; TNCN quý; TNDN; BCTC.
+- JSON/XLSX hiện chỉ để soát xét nội bộ. Không tự đổi công thức, mẫu, phiên bản hoặc kỳ lịch sử.

@@ -11,8 +11,8 @@
 | 1         | Kiểm kê và hoàn thiện Việt hóa   | Bản dịch còn một phần; kiểm tra tĩnh có bằng chứng, chưa nghiệm thu độ phủ hoặc GUI.                                                                                                                                                   |
 | 2         | Không gian kế toán và điều hướng | Chưa triển khai giao diện Kế toán; kiểm thử GUI BLOCKED.                                                                                                                                                                               |
 | 3         | Agents kế toán                   | Chưa đăng ký 72 Agents rỗng. Các mã vai trò trong Skill GTGT không phải Agent đã tạo.                                                                                                                                                  |
-| 4         | Skills và xử lý dữ liệu          | Excel audit 8/8; law-watch 16/16; VAT draft 34/34; Skill integration 1/1; JSON + XLSX soát xét nội bộ PASS. Nguồn live 13/14 PASS, 1 BLOCKED (MOF guide). Full backend CI lần trước 4.595 passed; CI thay đổi nguồn mới đang chờ chạy. |
-| 5         | Kiểm thử đầu-cuối và build       | Web/backend smoke, ChatBox rollback 1.113/1.113, i18n/type-check, Electron preview/relay PASS trên head `73ce510`; GUI Eigent thật vẫn BLOCKED.                                                                                        |
+| 4         | Skills và xử lý dữ liệu          | Excel audit 8/8; law-watch 15/15; VAT draft 36/36; Skill integration 1/1; JSON + XLSX soát xét nội bộ PASS. Nguồn live 22/23 PASS, 1 BLOCKED (MOF guide); 20/20 nguồn bắt buộc TT89 Q3/2026 PASS. |
+| 5         | Kiểm thử đầu-cuối và build       | Trên head `849a362`: backend 4.595 passed/11 skipped/110 warnings; ChatBox 1.113/1.113; i18n, web/backend smoke, Electron preview/relay PASS. GUI Eigent thật vẫn BLOCKED. |
 
 ## Công việc đang tiếp tục
 
@@ -22,7 +22,7 @@ PR #3 `[fix: verify TT94 impact on 01/GTGT applicability](https://github.com/acc
 
 Nhánh GTGT tách khỏi PR #1. Skill `accounting-vat-return` đọc `.xlsx`/`.csv`, phân loại theo MST, soát hóa đơn/kỳ, tổng hợp, đối chiếu độc lập và xuất JSON hoặc workbook XLSX soát xét nội bộ. Workbook giữ `00017`, không chứa công thức và không sửa nguồn. Chưa sao chép/điền mẫu pháp định, chưa xuất XML và chưa nộp tờ khai.
 
-Law-watch tiếp tục theo dõi [Luật Quản lý thuế 108/2025/QH15](https://vanban.chinhphu.vn/?docid=216541&pageid=27160), [NĐ254/2026/NĐ-CP](https://vanban.chinhphu.vn/?docid=218689&pageid=27160) và [TT91/2026/TT-BTC](https://vanban.chinhphu.vn/?docid=219006&pageid=27160). Metadata được xác minh, nhưng tác động chi tiết lên 01/GTGT/schema XML chưa xác minh. Nguồn mới chỉ là điều kiện kiểm tra cho TT89 từ 01/07/2026; bộ nguồn và kỳ TT80 cũ không đổi. Live check 13/14 PASS, một nguồn CSDL Bộ Tài chính BLOCKED; backend full-suite CI cho cập nhật mới đang chờ.
+Law-watch tiếp tục theo dõi [Luật Quản lý thuế 108/2025/QH15](https://vanban.chinhphu.vn/?docid=216541&pageid=27160), [NĐ254/2026/NĐ-CP](https://vanban.chinhphu.vn/?docid=218689&pageid=27160) và [TT91/2026/TT-BTC](https://vanban.chinhphu.vn/?docid=219006&pageid=27160). Metadata được xác minh, nhưng tác động chi tiết lên 01/GTGT/schema XML chưa xác minh. Nguồn mới chỉ là điều kiện kiểm tra cho TT89 từ 01/07/2026; bộ nguồn và kỳ TT80 cũ không đổi. Live check gần nhất 22/23 tham chiếu PASS, 1 nguồn MOF guide BLOCKED; 20/20 nguồn bắt buộc TT89 Q3/2026 PASS. Full backend CI trên head `849a362` đã PASS.
 
 Đã đối chiếu 01/GTGT TT80 (Phụ lục II) và TT89 (Phụ lục I, bản ký số trang PDF 241–243); TT40/2025, toàn văn TT94/2025, TT21/2026, 2551/QĐ-BTC, TT110/2026 cùng Luật GTGT 48/2024/QH15, NĐ181/2025/NĐ-CP, TT69/2025/TT-BTC. TT89 hiệu lực 01/07/2026; hồ sơ có kỳ trước ngày này dùng mẫu trước đó theo điều khoản chuyển tiếp. Toàn văn TT94 không cho thấy thay trường/công thức 01/GTGT; TT80 mapping Q4/2025 không còn bị chặn riêng bởi TT94. Hệ thống không tự chọn mẫu; một nguồn hướng dẫn CSDL của Bộ Tài chính hiện BLOCKED (HTTPError).
 
@@ -61,3 +61,11 @@ Các nhóm người dùng bổ sung như hồ sơ nhân sự, hợp đồng/quy�
 1. Mở GUI Eigent/Chat AI/đổi ngôn ngữ để nghiệm thu khi có môi trường GUI và cấu hình model hợp lệ; giữ BLOCKED cho tới lúc đó.
 
 Không gộp các trạng thái đã viết mã, test cục bộ, CI đạt, đã chạy ứng dụng và đã nghiệm thu nghiệp vụ thành một kết luận.
+
+
+## Cập nhật kiểm thử và tiến độ — 21/11/2026
+
+- PR #1 đã được rà diff **27 tệp/20 commit**; phạm vi là Excel audit chỉ đọc và law-watch proposal-only, không đưa luồng GTGT vào PR #1. PR #1 vẫn open/draft; [Test 44894972526](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44894972526), [Excel 44894972585](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44894972585), [law-watch 44894972473](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44894972473) đều PASS.
+- Head GTGT/law-watch `849a362331bc7a57664b51cab85b70491a2d5422`: [Test 44897312794](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897312794), [VAT 44897312793](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44897312793) PASS. Backend 4.595 passed/11 skipped/110 warnings; VAT 36/36; law-watch 15/15; Excel 8/8; Skill integration 1/1; ChatBox rollback 53 file/1.113 test; i18n, web/backend smoke, Electron preview/relay PASS.
+- Law-watch live check: 22/23 tham chiếu PASS; MOF guide 1 BLOCKED; 20/20 nguồn bắt buộc TT89 Q3/2026 PASS. 0 proposal, 0 Issue tạo; `auto_applied=false`. Tệp đính chính TT89 đã được nhận diện là QĐ2551 đã có trong catalog.
+- GUI Eigent thật và Chat AI với model hợp lệ vẫn BLOCKED; XML/schema, XLSX pháp định và các module thuế còn lại NOT STARTED.
