@@ -91,19 +91,70 @@ def is_relevant_document(citation: str | None, title: str) -> bool:
     return any(term in normalized for term in _TOPIC_TERMS)
 
 
-def official_url(value: str, base_url: str = OFFICIAL_LISTING_URL) -> str:
+REFERENCE_HOSTS = frozenset(
+    {
+        "vanban.chinhphu.vn",
+        "congbao.chinhphu.vn",
+        "congbaocdn.chinhphu.vn",
+        "congbao.cdn.chinhphu.vn",
+        "datafiles.chinhphu.vn",
+        "vbpq.mof.gov.vn",
+        "mof.gov.vn",
+        "chinhphu.vn",
+        "baochinhphu.vn",
+    }
+)
+
+
+def _allowlisted_url(
+    value: str,
+    base_url: str,
+    allowed_hosts: frozenset[str],
+    purpose: str,
+) -> str:
     resolved = urljoin(base_url, value)
     parsed = urlparse(resolved)
-    if parsed.scheme != "https" or parsed.hostname != OFFICIAL_HOST:
-        raise ValueError("Chỉ cho phép truy cập vanban.chinhphu.vn qua HTTPS")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError(f"URL nguồn {purpose} không hợp lệ") from exc
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in allowed_hosts
+        or parsed.username
+        or parsed.password
+        or port not in (None, 443)
+    ):
+        raise ValueError(
+            f"Chỉ cho phép HTTPS tới hostname Chính phủ được duyệt cho {purpose}"
+        )
     return resolved
+
+
+def official_url(value: str, base_url: str = OFFICIAL_LISTING_URL) -> str:
+    return _allowlisted_url(
+        value, base_url, frozenset({OFFICIAL_HOST}), "danh sách văn bản"
+    )
+
+
+def official_reference_url(value: str) -> str:
+    return _allowlisted_url(value, value, REFERENCE_HOSTS, "tham chiếu pháp lý")
 
 
 class _AllowlistedRedirectHandler(HTTPRedirectHandler):
     """Reject redirects before the client contacts a non-allowlisted host."""
 
+    def __init__(self, allowed_hosts: frozenset[str] | None = None) -> None:
+        super().__init__()
+        self.allowed_hosts = allowed_hosts or frozenset({OFFICIAL_HOST})
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        official_url(newurl, req.full_url)
+        _allowlisted_url(
+            newurl,
+            req.full_url,
+            self.allowed_hosts,
+            "redirect nguồn chính thức",
+        )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
@@ -294,6 +345,37 @@ class _TextCollector(HTMLParser):
             self.parts.append(data.strip())
 
 
+class _ReferencePageParser(_TextCollector):
+    """Collect visible text and links from a configured official detail page."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.links: list[dict[str, str]] = []
+        self._href: str | None = None
+        self._anchor_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        self._href = dict(attrs).get("href")
+        self._anchor_parts = []
+
+    def handle_data(self, data: str) -> None:
+        super().handle_data(data)
+        if self._href is not None and data.strip():
+            self._anchor_parts.append(data.strip())
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() != "a":
+            return
+        if self._href:
+            self.links.append(
+                {"href": self._href, "text": " ".join(self._anchor_parts)}
+            )
+        self._href = None
+        self._anchor_parts = []
+
+
 def parse_detail_metadata(html: str) -> dict[str, str | None]:
     parser = _TextCollector()
     parser.feed(html)
@@ -439,12 +521,14 @@ def build_report(
     }
 
 
-def fetch_official_page(url: str, timeout: int = 20) -> str:
-    safe_url = official_url(url)
+def _fetch_html(
+    url: str, allowed_hosts: frozenset[str], purpose: str, timeout: int
+) -> str:
+    safe_url = _allowlisted_url(url, url, allowed_hosts, purpose)
     request = Request(safe_url, headers={"User-Agent": USER_AGENT})
-    opener = build_opener(_AllowlistedRedirectHandler())
+    opener = build_opener(_AllowlistedRedirectHandler(allowed_hosts))
     with opener.open(request, timeout=timeout) as response:
-        official_url(response.geturl(), safe_url)
+        _allowlisted_url(response.geturl(), safe_url, allowed_hosts, purpose)
         content_type = response.headers.get_content_type()
         if content_type not in {"text/html", "application/xhtml+xml"}:
             raise ValueError(f"Nguồn trả về loại nội dung không hỗ trợ: {content_type}")
@@ -453,6 +537,93 @@ def fetch_official_page(url: str, timeout: int = 20) -> str:
             raise ValueError("Nguồn vượt giới hạn kích thước đọc an toàn")
         encoding = response.headers.get_content_charset() or "utf-8"
     return payload.decode(encoding, errors="replace")
+
+
+def fetch_official_page(url: str, timeout: int = 20) -> str:
+    safe_url = official_url(url)
+    return _fetch_html(
+        safe_url, frozenset({OFFICIAL_HOST}), "danh sách văn bản", timeout
+    )
+
+
+def fetch_official_reference(url: str, timeout: int = 20) -> str:
+    safe_url = official_reference_url(url)
+    return _fetch_html(safe_url, REFERENCE_HOSTS, "tham chiếu pháp lý", timeout)
+
+
+def check_official_references(
+    registry: dict[str, object], reference_fetcher=None
+) -> list[dict[str, object]]:
+    fetcher = reference_fetcher or fetch_official_reference
+    checks = registry.get("source_checks", [])
+    if not isinstance(checks, list):
+        return []
+    results: list[dict[str, object]] = []
+    for item in checks:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "unnamed_source")
+        url = str(item.get("url") or "")
+        marker = str(item.get("expected_marker") or "")
+        result: dict[str, object] = {"name": name, "url": url}
+        try:
+            if not marker:
+                raise ValueError("expected_marker_missing")
+            safe_url = official_reference_url(url)
+            html = fetcher(safe_url)
+            parser = _ReferencePageParser()
+            parser.feed(html)
+            visible_text = normalize_text(" ".join(parser.parts))
+            if normalize_text(marker) not in visible_text:
+                result.update({"status": "fail", "reason": "expected_marker_not_found"})
+            else:
+                result["marker_found"] = True
+                expected_attachment = item.get("expected_attachment")
+                if isinstance(expected_attachment, dict):
+                    expected_attachment_url = official_reference_url(
+                        str(expected_attachment.get("url") or "")
+                    )
+                    expected_attachment_text = normalize_text(
+                        str(expected_attachment.get("text_contains") or "")
+                    )
+                    attachment_found = False
+                    for link in parser.links:
+                        try:
+                            link_url = official_reference_url(
+                                urljoin(safe_url, link["href"])
+                            )
+                        except ValueError:
+                            continue
+                        link_text = normalize_text(link["text"])
+                        if link_url == expected_attachment_url and (
+                            not expected_attachment_text
+                            or expected_attachment_text in link_text
+                        ):
+                            attachment_found = True
+                            break
+                    if attachment_found:
+                        result.update(
+                            {"status": "pass", "expected_attachment_found": True}
+                        )
+                    else:
+                        result.update(
+                            {
+                                "status": "fail",
+                                "reason": "expected_attachment_not_found",
+                                "expected_attachment_found": False,
+                            }
+                        )
+                else:
+                    result.update({"status": "pass"})
+        except Exception as exc:
+            result.update(
+                {
+                    "status": "blocked",
+                    "reason": type(exc).__name__,
+                }
+            )
+        results.append(result)
+    return results
 
 
 def load_json(path: Path) -> dict[str, object]:
@@ -486,6 +657,12 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(
                     "Đã truy cập nguồn nhưng không đọc được văn bản từ danh sách"
                 )
+            reference_checks = check_official_references(registry)
+            report["official_reference_checks"] = reference_checks
+            report["official_reference_summary"] = {
+                status: sum(item.get("status") == status for item in reference_checks)
+                for status in ("pass", "fail", "blocked")
+            }
         else:
             html = args.fixture.read_text(encoding="utf-8")
             report = build_report(html, registry)

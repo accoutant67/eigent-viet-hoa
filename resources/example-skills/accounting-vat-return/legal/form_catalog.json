@@ -2,6 +2,31 @@
   "catalog_schema_version": 1,
   "checked_on": "2026-11-21",
   "subject": "monthly_or_quarterly_vat_return",
+  "related_tax_administration_sources": [
+    {
+      "instrument": "108/2025/QH15",
+      "issued_on": "2025-12-10",
+      "effective_from": "2026-07-01",
+      "special_effective_from": "2026-01-01",
+      "special_effective_scope": "Article 13 and the use of electronic invoices by household and individual businesses under Article 26",
+      "official_source": "https://vanban.chinhphu.vn/?docid=216541&pageid=27160",
+      "review_status": "official_metadata_and_government_full_text_notice_checked; filing-period transition and 01_GTGT impact need human review"
+    },
+    {
+      "instrument": "254/2026/NĐ-CP",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "official_source": "https://vanban.chinhphu.vn/?docid=218689&pageid=27160",
+      "review_status": "official_metadata_checked; full technical schema, transition rules and 01_GTGT impact not reviewed"
+    },
+    {
+      "instrument": "91/2026/TT-BTC",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "official_source": "https://vanban.chinhphu.vn/?docid=219006&pageid=27160",
+      "review_status": "official_metadata_checked; full technical schema, transition rules and 01_GTGT impact not reviewed"
+    }
+  ],
   "filing_form": {
     "form_number": "01/GTGT",
     "status": "official_pdf_template_identified; period_and_field_mapping_review_required; no_auto_selection",
@@ -15,7 +40,56 @@
         "official_source": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
         "official_consolidated_form_reference": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-15-vbhn-btc-42004-50395",
         "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
-        "verified_form_items": ["01a", "01b", "11a", "11b", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "33", "34", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "required_law_watch_sources": [
+          "congbao_tt80_2021",
+          "vanban_law_vat_48_2024",
+          "vanban_law_vat_90_2025",
+          "vanban_vat_resolution_204_2025",
+          "vanban_vat_decree_174_2025",
+          "vanban_decree_vat_181_2025",
+          "vanban_circular_vat_69_2025",
+          "vanban_tt40_2025_tt80_form_update",
+          "vanban_tt94_2025_tt80_update",
+          "vanban_law_vat_149_2025",
+          "vanban_decree_vat_359_2025",
+          "vanban_law_vat_09_2026",
+          "vanban_decree_vat_144_2026",
+          "vanban_tt21_2026_tt80_update",
+          "vanban_law_tax_admin_108_2025"
+        ],
+        "verified_form_items": [
+          "01a",
+          "01b",
+          "11a",
+          "11b",
+          "11c",
+          "23",
+          "23a",
+          "24",
+          "24a",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "32a",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39a",
+          "40a",
+          "40b",
+          "40",
+          "41",
+          "42",
+          "43"
+        ],
         "form_item_inventory_basis": "base form as issued with TT80; apply effective overlays below for the relevant period; no official workbook export is implemented",
         "period_specific_overlays": [
           {
@@ -23,8 +97,15 @@
             "effective_from": "2025-07-01",
             "official_source": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
             "field_changes": [
-              {"field": "11a", "change": "label_updated", "label": "Xã/phường/đặc khu"},
-              {"field": "11b", "change": "removed"}
+              {
+                "field": "11a",
+                "change": "label_updated",
+                "label": "Xã/phường/đặc khu"
+              },
+              {
+                "field": "11b",
+                "change": "removed"
+              }
             ]
           },
           {
@@ -50,23 +131,23 @@
           "34": "26 + 27",
           "35": "28",
           "36": "35 - 25",
-          "40a": "36 - 22 + 37 - 38 - 39a",
           "40": "40a - 40b",
           "41": "36 - 22 + 37 - 38 - 39a",
-          "43": "41 - 42"
+          "43": "41 - 42",
+          "40a": "36 - 22 + 37 - 38 - 39a"
         },
         "conditional_formulas": {
-          "40a": {
-            "expression": "36 - 22 + 37 - 38 - 39a",
-            "condition": "nonnegative",
-            "not_applicable_value": null,
-            "basis": "Official 01/GTGT form: [40a] is the expression when the result is >= 0."
-          },
           "41": {
             "expression": "36 - 22 + 37 - 38 - 39a",
             "condition": "nonpositive",
             "not_applicable_value": null,
             "basis": "Official 01/GTGT form: [41] is the expression when the result is <= 0."
+          },
+          "40a": {
+            "expression": "36 - 22 + 37 - 38 - 39a",
+            "condition": "nonnegative",
+            "not_applicable_value": null,
+            "basis": "Official 01/GTGT form: [40a] is the expression when the result is >= 0."
           }
         },
         "period_use": "The official consolidated form text confirms 01/GTGT in TT80 Appendix II. TT40/2025 address-field changes and the full official TT94/2025 text were reviewed. TT94 changes VAT-refund administration provisions and identity-document wording/fields on templates that contain those fields; 01/GTGT contains no individual identity-document field, so the review found no 01/GTGT field or formula change. TT21/2026 status for 01/GTGT remains subject to the reviewed form inventory. Filing-period transition and taxpayer case still require human review; no automatic selection.",
@@ -84,10 +165,65 @@
         "official_source": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
         "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
         "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/165862",
+        "required_law_watch_sources": [
+          "congbao_tt80_2021",
+          "vanban_law_vat_48_2024",
+          "vanban_law_vat_90_2025",
+          "vanban_vat_resolution_204_2025",
+          "vanban_vat_decree_174_2025",
+          "vanban_decree_vat_181_2025",
+          "vanban_circular_vat_69_2025",
+          "vanban_tt89_2026",
+          "vanban_tt40_2025_tt80_form_update",
+          "vanban_tt94_2025_tt80_update",
+          "vanban_law_vat_149_2025",
+          "vanban_decree_vat_359_2025",
+          "vanban_law_vat_09_2026",
+          "vanban_decree_vat_144_2026",
+          "vanban_tt21_2026_tt80_update",
+          "congbao_correction_2551_2026",
+          "vanban_tt110_2026",
+          "vanban_law_tax_admin_108_2025",
+          "vanban_decree_invoice_254_2026",
+          "vanban_circular_invoice_91_2026"
+        ],
         "correction_reference": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
         "period_use": "Official Government metadata gives an effective date of 2026-07-01. The signed official attachment was checked directly: Annex I, printed page 241 contains form 01/GTGT, including month/quarter period, field [32b], field [34a], and the updated totals formulas. Use for a tax period only after transition and taxpayer-case review; no automatic selection.",
         "verified_form_page": 241,
-        "verified_form_items": ["01a", "01b", "11a", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "32b", "33", "34", "34a", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_form_items": [
+          "01a",
+          "01b",
+          "11a",
+          "11c",
+          "23",
+          "23a",
+          "24",
+          "24a",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "32a",
+          "32b",
+          "33",
+          "34",
+          "34a",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39a",
+          "40a",
+          "40b",
+          "40",
+          "41",
+          "42",
+          "43"
+        ],
         "verified_purchase_field_relationships": {
           "source": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
           "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
@@ -104,26 +240,31 @@
           "34": "26 + 27 + 34a",
           "35": "28",
           "36": "35 - 25",
-          "40a": "36 - 22 + 37 - 38 - 39a",
           "40": "40a - 40b",
           "41": "36 - 22 + 37 - 38 - 39a",
-          "43": "41 - 42"
+          "43": "41 - 42",
+          "40a": "36 - 22 + 37 - 38 - 39a"
         },
         "conditional_formulas": {
-          "40a": {
-            "expression": "36 - 22 + 37 - 38 - 39a",
-            "condition": "nonnegative",
-            "not_applicable_value": null,
-            "basis": "Official 01/GTGT form: [40a] is the expression when the result is >= 0."
-          },
           "41": {
             "expression": "36 - 22 + 37 - 38 - 39a",
             "condition": "nonpositive",
             "not_applicable_value": null,
             "basis": "Official 01/GTGT form: [41] is the expression when the result is <= 0."
+          },
+          "40a": {
+            "expression": "36 - 22 + 37 - 38 - 39a",
+            "condition": "nonnegative",
+            "not_applicable_value": null,
+            "basis": "Official 01/GTGT form: [40a] is the expression when the result is >= 0."
           }
         },
-        "verified_form_constraints": ["40a >= 0", "40b <= 40a", "42 <= 41", "41 <= 0"],
+        "verified_form_constraints": [
+          "40a >= 0",
+          "40b <= 40a",
+          "42 <= 41",
+          "41 <= 0"
+        ],
         "official_attachment_checked": true
       }
     ],
@@ -169,16 +310,195 @@
     "related_annexes": {
       "status": "official_inventory_identified_applicability_review_required",
       "official_forms_in_tt89_annex_i": [
-        {"form_number": "01-2/GTGT", "scope": "VAT allocation for hydropower activities"},
-        {"form_number": "01-3/GTGT", "scope": "VAT allocation for digital lottery activities"},
-        {"form_number": "01-6/GTGT", "scope": "VAT allocation for activities other than hydropower and digital lottery"},
-        {"form_number": "01-7/GTGT", "scope": "Input VAT allocation to telecom business branches"},
-        {"form_number": "01-8/GTGT", "scope": "VAT refund information; attached to 01/GTGT or 02/GTGT as applicable"}
+        {
+          "form_number": "01-2/GTGT",
+          "scope": "VAT allocation for hydropower activities"
+        },
+        {
+          "form_number": "01-3/GTGT",
+          "scope": "VAT allocation for digital lottery activities"
+        },
+        {
+          "form_number": "01-6/GTGT",
+          "scope": "VAT allocation for activities other than hydropower and digital lottery"
+        },
+        {
+          "form_number": "01-7/GTGT",
+          "scope": "Input VAT allocation to telecom business branches"
+        },
+        {
+          "form_number": "01-8/GTGT",
+          "scope": "VAT refund information; attached to 01/GTGT or 02/GTGT as applicable"
+        }
       ],
       "note": "Official Annex I form inventory was checked. Whether a taxpayer must use an annex depends on the taxpayer's activity, locations, investment/refund facts and applicable period; no annex is selected automatically. Field mapping for these annexes is NOT STARTED."
     },
     "xlsx_template_mapping": "NOT_STARTED",
     "xml_schema": "NOT_STARTED_NOT_VERIFIED",
     "auto_form_selection": false
-  }
+  },
+  "related_vat_amendment_sources": [
+    {
+      "instrument": "90/2025/QH15",
+      "issued_on": "2025-06-25",
+      "effective_from": "2025-07-01",
+      "official_source": "https://vanban.chinhphu.vn/?classid=1&docid=214558&pageid=27160",
+      "review_status": "official metadata checked; amends VAT Law 48; taxpayer scope and 01/GTGT field impact require human review"
+    },
+    {
+      "instrument": "204/2025/QH15",
+      "issued_on": "2025-06-17",
+      "effective_from": "2025-07-01",
+      "effective_through": "2026-12-31",
+      "official_source": "https://vanban.chinhphu.vn/?classid=1&docid=214209&orggroupid=1&pageid=27160",
+      "review_status": "official metadata checked; temporary VAT reduction window recorded through 2026-12-31; goods/service scope and invoice-rate treatment require human review"
+    },
+    {
+      "instrument": "174/2025/NĐ-CP",
+      "issued_on": "2025-06-30",
+      "effective_from": "2025-07-01",
+      "effective_through": "2026-12-31",
+      "official_source": "https://vanban.chinhphu.vn/?classid=0&docid=214310&pageid=27160",
+      "review_status": "official metadata checked; implements Resolution 204/2025; product scope and invoice-rate treatment require human review"
+    },
+    {
+      "instrument": "149/2025/QH15",
+      "issued_on": "2025-12-11",
+      "effective_from": "2026-01-01",
+      "official_source": "https://vanban.chinhphu.vn/?classid=1&docid=216588&pageid=27160&typegroupid=3",
+      "review_status": "official metadata checked; amends VAT Law 48; provision-level applicability and 01/GTGT field impact require human review"
+    },
+    {
+      "instrument": "359/2025/NĐ-CP",
+      "issued_on": "2025-12-31",
+      "effective_from": "2026-01-01",
+      "official_source": "https://vanban.chinhphu.vn/?classid=1&docid=216388&orggroupid=2&pageid=27160",
+      "review_status": "official metadata checked; amends VAT Decree 181; detailed transition and 01/GTGT field impact require human review"
+    },
+    {
+      "instrument": "09/2026/QH16",
+      "issued_on": "2026-04-24",
+      "effective_from": "2026-04-24",
+      "official_source": "https://vanban.chinhphu.vn/?docid=218095&pageid=27160",
+      "review_status": "official metadata checked; amends VAT and other tax laws; provision-specific applicability and 01/GTGT field impact require human review"
+    },
+    {
+      "instrument": "144/2026/NĐ-CP",
+      "issued_on": "2026-05-05",
+      "effective_from": "2026-06-20",
+      "official_source": "https://vanban.chinhphu.vn/?docid=218020&pageid=27160",
+      "review_status": "official metadata checked; amends Decree 181 as amended by Decree 359; detailed scope and 01/GTGT field impact require human review"
+    }
+  ],
+  "law_watch_period_source_windows": [
+    {
+      "source": "vanban_law_vat_48_2024",
+      "effective_from": "2025-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_law_vat_90_2025",
+      "effective_from": "2025-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_vat_resolution_204_2025",
+      "effective_from": "2025-07-01",
+      "effective_through": "2026-12-31"
+    },
+    {
+      "source": "vanban_vat_decree_174_2025",
+      "effective_from": "2025-07-01",
+      "effective_through": "2026-12-31"
+    },
+    {
+      "source": "vanban_decree_vat_181_2025",
+      "effective_from": "2025-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_circular_vat_69_2025",
+      "effective_from": "2025-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_tt40_2025_tt80_form_update",
+      "effective_from": "2025-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_tt94_2025_tt80_update",
+      "effective_from": "2025-10-14",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_law_vat_149_2025",
+      "effective_from": "2026-01-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_decree_vat_359_2025",
+      "effective_from": "2026-01-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_law_tax_admin_108_2025",
+      "effective_from": "2026-01-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_tt21_2026_tt80_update",
+      "effective_from": "2026-03-17",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_law_vat_09_2026",
+      "effective_from": "2026-04-24",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_decree_vat_144_2026",
+      "effective_from": "2026-06-20",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_tt89_2026",
+      "effective_from": "2026-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_decree_invoice_254_2026",
+      "effective_from": "2026-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_circular_invoice_91_2026",
+      "effective_from": "2026-07-01",
+      "effective_through": null
+    },
+    {
+      "source": "vanban_tt110_2026",
+      "effective_from": "2026-09-12",
+      "effective_through": null
+    },
+    {
+      "source": "congbao_correction_2551_2026",
+      "effective_from": "2026-09-15",
+      "effective_through": null
+    }
+  ],
+  "reference_only_consolidations": [
+    {
+      "instrument": "12/VBHN-VPQH",
+      "issued_on": "2026-02-06",
+      "official_source": "https://vanban.chinhphu.vn/?docid=216941&pageid=27160",
+      "status": "official_metadata_checked; reference_only; predates_Law_09_2026; not_current_consolidated_text"
+    },
+    {
+      "instrument": "03/VBHN-BTC",
+      "issued_on": "2026-02-12",
+      "official_source": "https://vanban.chinhphu.vn/?classid=0&docid=217009&pageid=27160",
+      "status": "official_metadata_checked; reference_only; predates_Decree_144_2026; not_current_consolidated_text"
+    }
+  ]
 }

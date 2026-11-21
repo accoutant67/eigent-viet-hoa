@@ -36,17 +36,12 @@ def main() -> int:
             "2025-10-16,0300000001,0100000001,BB/25E,00020,1000,5%,50,1050,Bình thường,23,24\n",
             encoding="utf-8",
         )
+        registry_path = (
+            SKILL_ROOT.parent / "accounting-law-watch" / "registry.json"
+        )
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
         required_sources = [
-            "congbao_tt80_2021",
-            "vanban_law_vat_48_2024",
-            "vanban_decree_vat_181_2025",
-            "vanban_circular_vat_69_2025",
-            "vanban_tt89_2026",
-            "vanban_tt40_2025_tt80_form_update",
-            "vanban_tt94_2025_tt80_update",
-            "vanban_tt21_2026_tt80_update",
-            "congbao_correction_2551_2026",
-            "vanban_tt110_2026",
+            item["name"] for item in registry["source_checks"]
         ]
         law_watch_report.write_text(
             json.dumps(

@@ -157,22 +157,66 @@ FORM_VERSION_WINDOWS = {
 LAW_WATCH_REQUIRED_SOURCES = {
     "80/2021/TT-BTC": {
         "congbao_tt80_2021",
+        "vanban_law_vat_48_2024",
+        "vanban_law_vat_90_2025",
+        "vanban_vat_resolution_204_2025",
+        "vanban_vat_decree_174_2025",
+        "vanban_decree_vat_181_2025",
+        "vanban_circular_vat_69_2025",
         "vanban_tt40_2025_tt80_form_update",
         "vanban_tt94_2025_tt80_update",
+        "vanban_law_vat_149_2025",
+        "vanban_decree_vat_359_2025",
+        "vanban_law_vat_09_2026",
+        "vanban_decree_vat_144_2026",
         "vanban_tt21_2026_tt80_update",
+        "vanban_law_tax_admin_108_2025",
     },
     "89/2026/TT-BTC": {
+        "congbao_tt80_2021",
         "vanban_law_vat_48_2024",
+        "vanban_law_vat_90_2025",
+        "vanban_vat_resolution_204_2025",
+        "vanban_vat_decree_174_2025",
         "vanban_decree_vat_181_2025",
         "vanban_circular_vat_69_2025",
         "vanban_tt89_2026",
         "vanban_tt40_2025_tt80_form_update",
         "vanban_tt94_2025_tt80_update",
+        "vanban_law_vat_149_2025",
+        "vanban_decree_vat_359_2025",
+        "vanban_law_vat_09_2026",
+        "vanban_decree_vat_144_2026",
         "vanban_tt21_2026_tt80_update",
         "congbao_correction_2551_2026",
         "vanban_tt110_2026",
+        "vanban_law_tax_admin_108_2025",
+        "vanban_decree_invoice_254_2026",
+        "vanban_circular_invoice_91_2026",
     },
 }
+LAW_WATCH_SOURCE_WINDOWS = {
+    "vanban_law_vat_48_2024": ("2025-07-01", None),
+    "vanban_law_vat_90_2025": ("2025-07-01", None),
+    "vanban_vat_resolution_204_2025": ("2025-07-01", "2026-12-31"),
+    "vanban_vat_decree_174_2025": ("2025-07-01", "2026-12-31"),
+    "vanban_decree_vat_181_2025": ("2025-07-01", None),
+    "vanban_circular_vat_69_2025": ("2025-07-01", None),
+    "vanban_tt40_2025_tt80_form_update": ("2025-07-01", None),
+    "vanban_tt94_2025_tt80_update": ("2025-10-14", None),
+    "vanban_law_vat_149_2025": ("2026-01-01", None),
+    "vanban_decree_vat_359_2025": ("2026-01-01", None),
+    "vanban_law_tax_admin_108_2025": ("2026-01-01", None),
+    "vanban_tt21_2026_tt80_update": ("2026-03-17", None),
+    "vanban_law_vat_09_2026": ("2026-04-24", None),
+    "vanban_decree_vat_144_2026": ("2026-06-20", None),
+    "vanban_tt89_2026": ("2026-07-01", None),
+    "vanban_decree_invoice_254_2026": ("2026-07-01", None),
+    "vanban_circular_invoice_91_2026": ("2026-07-01", None),
+    "vanban_tt110_2026": ("2026-09-12", None),
+    "congbao_correction_2551_2026": ("2026-09-15", None),
+}
+
 
 
 class VatDraftError(ValueError):
@@ -619,18 +663,25 @@ def _normalize_supplemental_form_inputs(
     return amounts, sources
 
 
+def _required_law_watch_sources(version: str, period: str) -> set[str]:
+    start, end, _period_type = period_window(period)
+    required = set(LAW_WATCH_REQUIRED_SOURCES[version])
+    for source, (effective_from, effective_through) in LAW_WATCH_SOURCE_WINDOWS.items():
+        if source not in required:
+            continue
+        source_start = dt.date.fromisoformat(effective_from)
+        source_end = (
+            dt.date.fromisoformat(effective_through) if effective_through else None
+        )
+        if end < source_start or (source_end is not None and start > source_end):
+            required.discard(source)
+    return required
+
+
 def _review_law_watch_report(
     report_path: str | Path | None, version: str, period: str
 ) -> dict[str, Any]:
-    period_end = period_window(period)[1]
-    required = set(LAW_WATCH_REQUIRED_SOURCES[version])
-    if version == "80/2021/TT-BTC":
-        if period_end < dt.date(2025, 7, 1):
-            required.discard("vanban_tt40_2025_tt80_form_update")
-        if period_end < dt.date(2025, 10, 14):
-            required.discard("vanban_tt94_2025_tt80_update")
-        if period_end < dt.date(2026, 3, 17):
-            required.discard("vanban_tt21_2026_tt80_update")
+    required = _required_law_watch_sources(version, period)
     if report_path is None:
         return {
             "status": "blocked",

@@ -172,6 +172,95 @@ class OfficialLawWatchTests(unittest.TestCase):
                 "https://example.com/redirected-law",
             )
 
+    def test_reference_check_requires_allowlisted_https_and_matches_page_marker(
+        self,
+    ) -> None:
+        source = {
+            "source_checks": [
+                {
+                    "name": "official_law",
+                    "url": "https://vanban.chinhphu.vn/?docid=1",
+                    "expected_marker": "149/2025/QH15",
+                }
+            ]
+        }
+        passed = watch.check_official_references(
+            source, lambda _url: "<p>Luật số 149/2025/QH15</p>"
+        )
+        self.assertEqual(passed[0]["status"], "pass")
+        failed = watch.check_official_references(
+            source, lambda _url: "<p>Trang Chính phủ nhưng không có số hiệu</p>"
+        )
+        self.assertEqual(failed[0]["status"], "fail")
+        self.assertEqual(failed[0]["reason"], "expected_marker_not_found")
+
+    def test_reference_check_verifies_expected_official_attachment_link(self) -> None:
+        attachment_url = (
+            "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/9/"
+            "dinh-chinh-tt-89-2026-btc.signed.pdf"
+        )
+        source = {
+            "source_checks": [
+                {
+                    "name": "vanban_tt89_2026",
+                    "url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
+                    "expected_marker": "89/2026/TT-BTC",
+                    "expected_attachment": {
+                        "url": attachment_url,
+                        "text_contains": "dinh-chinh-tt-89-2026-btc.signed.pdf",
+                    },
+                }
+            ]
+        }
+        page = (
+            "<h1>Thông tư số 89/2026/TT-BTC</h1>"
+            f'<a href="{attachment_url}">'
+            "dinh-chinh-tt-89-2026-btc.signed.pdf</a>"
+        )
+        passed = watch.check_official_references(source, lambda _url: page)
+        self.assertEqual(passed[0]["status"], "pass")
+        self.assertTrue(passed[0]["expected_attachment_found"])
+
+        missing = watch.check_official_references(
+            source,
+            lambda _url: "<h1>Thông tư số 89/2026/TT-BTC</h1>",
+        )
+        self.assertEqual(missing[0]["status"], "fail")
+        self.assertEqual(missing[0]["reason"], "expected_attachment_not_found")
+
+        source["source_checks"][0]["expected_attachment"]["url"] = (
+            "https://example.com/untrusted.pdf"
+        )
+        blocked = watch.check_official_references(source, lambda _url: page)
+        self.assertEqual(blocked[0]["status"], "blocked")
+
+    def test_reference_check_blocks_unapproved_host_and_external_redirect(self) -> None:
+        source = {
+            "source_checks": [
+                {
+                    "name": "untrusted",
+                    "url": "https://example.com/fake",
+                    "expected_marker": "149/2025/QH15",
+                }
+            ]
+        }
+        with patch.object(watch, "fetch_official_reference") as fetcher:
+            result = watch.check_official_references(source)
+        self.assertEqual(result[0]["status"], "blocked")
+        fetcher.assert_not_called()
+
+        handler = watch._AllowlistedRedirectHandler(watch.REFERENCE_HOSTS)
+        request = watch.Request("https://mof.gov.vn/")
+        with self.assertRaises(ValueError):
+            handler.redirect_request(
+                request,
+                None,
+                302,
+                "Found",
+                {},
+                "https://example.com/redirected-law",
+            )
+
     def test_issue_publisher_dry_run_builds_issue_without_network(self) -> None:
         issue = {
             "title": "Đề xuất rà soát văn bản: 121/2026/TT-BTC",

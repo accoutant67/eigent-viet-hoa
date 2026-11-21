@@ -10,9 +10,12 @@ description: "Theo dõi văn bản pháp luật kế toán, thuế, hóa đơn v
 - Nguồn phát hiện văn bản mới vẫn là trang hệ thống văn bản của Cổng Thông tin điện tử Chính phủ: https://vanban.chinhphu.vn/he-thong-van-ban?classid=0&maxresults=50&mode=1 .
 - Các trang Công báo điện tử Chính phủ, cơ sở dữ liệu văn bản pháp quy của Bộ Tài chính và một số trang hỗ trợ pháp lý Bộ Tài chính được kiểm tra để xác nhận tham chiếu đã biết. Chúng hiện là nguồn đối chiếu, chưa phải nguồn feed phát hiện thay đổi riêng.
 - Registry ghi lại số hiệu đã biết và metadata nguồn để tránh lặp đề xuất. Registry này không chứa công thức kế toán/thuế và không được sửa tự động.
-- Luật GTGT 48/2024/QH15, Nghị định 181/2025/NĐ-CP và TT69/2025/TT-BTC là căn cứ GTGT nền được ghi nhận bên cạnh TT80/2021, TT40/2025, TT94/2025, TT21/2026, TT89/2026 và đính chính 2551/QĐ-BTC. Chuỗi sửa đổi, phụ lục, phạm vi mẫu và kỳ áp dụng vẫn cần kiểm tra văn bản gốc trước khi duyệt.
+- Chuỗi nguồn GTGT còn ghi nhận Luật 90/2025/QH15, Nghị quyết 204/2025/QH15, Nghị định 174/2025/NĐ-CP, Luật 149/2025/QH15, Nghị định 359/2025/NĐ-CP, Luật 09/2026/QH16 và Nghị định 144/2026/NĐ-CP theo metadata Cổng Chính phủ. Phạm vi mặt hàng, chuyển tiếp và tác động tới 01/GTGT cần người có chuyên môn rà; không suy ra công thức hoặc phân loại từ việc ghi nhận văn bản.
+- Bản hợp nhất 12/VBHN-VPQH và 03/VBHN-BTC được lưu làm tham chiếu lịch sử, không dùng làm nguồn hợp nhất hiện hành vì ban hành trước Luật 09/2026 và Nghị định 144/2026.
+- Luật GTGT 48/2024/QH15, Nghị định 181/2025/NĐ-CP và TT69/2025/TT-BTC là căn cứ GTGT nền được ghi nhận bên cạnh TT80/2021, TT40/2025, TT94/2025, TT21/2026, TT89/2026 và đính chính 2551/QĐ-BTC.
+- Đã thêm Luật Quản lý thuế 108/2025/QH15, Nghị định 254/2026/NĐ-CP và TT91/2026/TT-BTC vào registry theo metadata Cổng Chính phủ. Luật 108 có mốc hiệu lực chung 01/07/2026 và một số quy định về hộ/cá nhân kinh doanh, hóa đơn điện tử có hiệu lực từ 01/01/2026. Tác động của chuỗi mới đến 01/GTGT, kỳ chuyển tiếp và chuẩn XML vẫn **CHƯA XÁC MINH**; việc ghi nhận nguồn không đồng nghĩa với thay mẫu hay công thức.
 - Cơ sở dữ liệu văn bản pháp quy Bộ Tài chính được kiểm tra như nguồn tham chiếu. Nếu máy chủ không phản hồi hoặc trang thay đổi cấu trúc, report phải ghi BLOCKED; điều này không được tính là nguồn đã kiểm chứng hay feed phát hiện mới.
-- Kiểm tra nguồn tham chiếu bổ sung được cấu hình trong `registry.json`; mỗi lần chạy trực tiếp ghi trạng thái PASS/BLOCKED theo nguồn. Kiểm tra truy cập không đồng nghĩa với đã xác minh nội dung pháp lý.
+- Kiểm tra nguồn tham chiếu bổ sung được cấu hình trong `registry.json`; mỗi lần chạy trực tiếp ghi PASS, FAIL khi thiếu số hiệu dự kiến hoặc liên kết tệp đính kèm mong đợi, hoặc BLOCKED theo từng nguồn. Với TT89/2026, monitor kiểm tra trang Chính phủ có gắn đúng PDF đính chính 2551/QĐ-BTC hay không. Kiểm tra liên kết không đồng nghĩa với đã xác minh toàn văn PDF hoặc nội dung pháp lý.
 
 ## Cách chạy
 

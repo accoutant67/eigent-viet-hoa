@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+import io
 import json
 import sys
 import tempfile
 import unittest
 import zipfile
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
 from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import vat_return_draft as vat
+
+sys.path.insert(
+    0,
+    str(
+        Path(__file__).resolve().parents[1].parent / "accounting-law-watch" / "scripts"
+    ),
+)
+import watch_official_documents as law_watch
 
 
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -172,25 +183,12 @@ def make_workbook(
 
 
 def write_law_watch_report(path: Path, version: str) -> Path:
-    required_sources = {
-        "80/2021/TT-BTC": [
-            "congbao_tt80_2021",
-            "vanban_tt40_2025_tt80_form_update",
-            "vanban_tt94_2025_tt80_update",
-            "vanban_tt21_2026_tt80_update",
-        ],
-        "89/2026/TT-BTC": [
-            "vanban_law_vat_48_2024",
-            "vanban_decree_vat_181_2025",
-            "vanban_circular_vat_69_2025",
-            "vanban_tt89_2026",
-            "vanban_tt40_2025_tt80_form_update",
-            "vanban_tt94_2025_tt80_update",
-            "vanban_tt21_2026_tt80_update",
-            "congbao_correction_2551_2026",
-            "vanban_tt110_2026",
-        ],
-    }[version]
+    registry_path = (
+        Path(__file__).resolve().parents[1].parent
+        / "accounting-law-watch"
+        / "registry.json"
+    )
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
     report = {
         "fixture_only": True,
         "checked_at": "2099-01-01T00:00:00+00:00",
@@ -200,7 +198,8 @@ def write_law_watch_report(path: Path, version: str) -> Path:
         "approved_period_metadata_unchanged": True,
         "auto_applied": False,
         "official_reference_checks": [
-            {"name": name, "status": "pass"} for name in required_sources
+            {"name": item["name"], "status": "pass"}
+            for item in registry["source_checks"]
         ],
     }
     path.write_text(json.dumps(report), encoding="utf-8")
@@ -228,6 +227,69 @@ class VatReturnDraftTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.workbook = self.root / "synthetic-invoices.xlsx"
         make_workbook(self.workbook)
+
+    def test_live_report_reference_checks_feed_vat_period_gate(self) -> None:
+        registry_path = (
+            Path(__file__).resolve().parents[1].parent
+            / "accounting-law-watch"
+            / "registry.json"
+        )
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+        listing = (
+            "<table><tr><td>80/2021/TT-BTC</td>"
+            "<td>Thông tư hướng dẫn hồ sơ thuế</td><td>29/09/2021</td>"
+            '<td><a href="/?docid=210080&pageid=27160">80/2021/TT-BTC</a></td>'
+            "</tr></table>"
+        )
+        markers = {
+            item["url"]: item["expected_marker"] for item in data["source_checks"]
+        }
+
+        def official_reference_fixture(url: str) -> str:
+            item = next(
+                source for source in data["source_checks"] if source["url"] == url
+            )
+            attachment = item.get("expected_attachment")
+            if isinstance(attachment, dict):
+                return (
+                    f"<p>{markers[url]}</p>"
+                    f'<a href="{attachment["url"]}">'
+                    f"{attachment.get('text_contains', '')}</a>"
+                )
+            return f"<p>{markers[url]}</p>"
+
+        with tempfile.TemporaryDirectory() as directory:
+            registry_path = Path(directory) / "registry.json"
+            report_path = Path(directory) / "law-watch-report.json"
+            registry_path.write_text(json.dumps(data), encoding="utf-8")
+            with (
+                patch.object(law_watch, "fetch_official_page", return_value=listing),
+                patch.object(
+                    law_watch,
+                    "fetch_official_reference",
+                    side_effect=official_reference_fixture,
+                ),
+            ):
+                with redirect_stdout(io.StringIO()):
+                    status = law_watch.main(
+                        [
+                            "--registry",
+                            str(registry_path),
+                            "--check-source",
+                            "--output",
+                            str(report_path),
+                        ]
+                    )
+            self.assertEqual(status, 0)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            decision = vat._review_law_watch_report(
+                report_path, "89/2026/TT-BTC", "2026-Q3"
+            )
+        self.assertEqual(report["official_reference_summary"]["pass"], len(markers))
+        self.assertEqual(report["official_reference_summary"]["fail"], 0)
+        self.assertEqual(report["official_reference_summary"]["blocked"], 0)
+        self.assertEqual(decision["status"], "pass")
+        self.assertFalse(decision["auto_applied"])
 
     def test_import_preserves_zero_padded_invoice_number_and_never_matches_names(
         self,
@@ -490,6 +552,19 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertEqual(form["form_number"], "01/GTGT")
         self.assertFalse(form["auto_form_selection"])
         versions = {item["instrument"]: item for item in form["versions"]}
+        for instrument, version in versions.items():
+            self.assertEqual(
+                set(version["required_law_watch_sources"]),
+                vat.LAW_WATCH_REQUIRED_SOURCES[instrument],
+            )
+        source_windows = {
+            item["source"]: (
+                item["effective_from"],
+                item["effective_through"],
+            )
+            for item in catalog["law_watch_period_source_windows"]
+        }
+        self.assertEqual(source_windows, vat.LAW_WATCH_SOURCE_WINDOWS)
         self.assertEqual(versions["89/2026/TT-BTC"]["annex"], "Phụ lục I")
         self.assertEqual(versions["89/2026/TT-BTC"]["verified_form_page"], 241)
         self.assertIn("32b", versions["89/2026/TT-BTC"]["verified_form_items"])
@@ -521,6 +596,75 @@ class VatReturnDraftTests(unittest.TestCase):
             form["related_annexes"]["status"],
             "official_inventory_identified_applicability_review_required",
         )
+        tax_admin_sources = {
+            item["instrument"]: item
+            for item in catalog["related_tax_administration_sources"]
+        }
+        self.assertEqual(
+            tax_admin_sources["108/2025/QH15"]["special_effective_from"],
+            "2026-01-01",
+        )
+        self.assertIn(
+            "not reviewed",
+            tax_admin_sources["254/2026/NĐ-CP"]["review_status"],
+        )
+        self.assertIn(
+            "not reviewed",
+            tax_admin_sources["91/2026/TT-BTC"]["review_status"],
+        )
+
+    def test_einvoice_sources_and_tax_admin_follow_their_period_windows(self) -> None:
+        einvoice_sources = {
+            "vanban_decree_invoice_254_2026",
+            "vanban_circular_invoice_91_2026",
+        }
+        tax_admin_source = "vanban_law_tax_admin_108_2025"
+        self.assertTrue(
+            einvoice_sources.isdisjoint(
+                vat.LAW_WATCH_REQUIRED_SOURCES["80/2021/TT-BTC"]
+            )
+        )
+        self.assertTrue(
+            einvoice_sources.issubset(vat.LAW_WATCH_REQUIRED_SOURCES["89/2026/TT-BTC"])
+        )
+        self.assertIn(
+            tax_admin_source, vat.LAW_WATCH_REQUIRED_SOURCES["80/2021/TT-BTC"]
+        )
+        self.assertNotIn(
+            tax_admin_source,
+            vat._required_law_watch_sources("80/2021/TT-BTC", "2025-Q4"),
+        )
+        self.assertIn(
+            tax_admin_source,
+            vat._required_law_watch_sources("80/2021/TT-BTC", "2026-Q1"),
+        )
+
+    def test_law_watch_sources_are_gated_by_period_effective_windows(self) -> None:
+        before_vat_law = vat._required_law_watch_sources("80/2021/TT-BTC", "2025-Q2")
+        self.assertNotIn("vanban_law_vat_48_2024", before_vat_law)
+        self.assertNotIn("vanban_vat_resolution_204_2025", before_vat_law)
+
+        after_july = vat._required_law_watch_sources("80/2021/TT-BTC", "2025-Q3")
+        self.assertIn("vanban_law_vat_90_2025", after_july)
+        self.assertIn("vanban_vat_resolution_204_2025", after_july)
+        self.assertIn("vanban_vat_decree_174_2025", after_july)
+        self.assertNotIn("vanban_law_vat_149_2025", after_july)
+
+        may = vat._required_law_watch_sources("80/2021/TT-BTC", "2026-05")
+        june = vat._required_law_watch_sources("80/2021/TT-BTC", "2026-06")
+        self.assertIn("vanban_law_vat_09_2026", may)
+        self.assertNotIn("vanban_decree_vat_144_2026", may)
+        self.assertIn("vanban_decree_vat_144_2026", june)
+
+        after_form_change = vat._required_law_watch_sources("89/2026/TT-BTC", "2026-Q3")
+        self.assertIn("vanban_tt89_2026", after_form_change)
+        self.assertIn("vanban_decree_vat_144_2026", after_form_change)
+        self.assertIn("vanban_tt110_2026", after_form_change)
+        self.assertIn("congbao_correction_2551_2026", after_form_change)
+
+        following_year = vat._required_law_watch_sources("89/2026/TT-BTC", "2027-Q1")
+        self.assertNotIn("vanban_vat_resolution_204_2025", following_year)
+        self.assertNotIn("vanban_vat_decree_174_2025", following_year)
 
     def test_explicit_tt89_lines_keep_categories_distinct_and_recompute_formulas(
         self,
