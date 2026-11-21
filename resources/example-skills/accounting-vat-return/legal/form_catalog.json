@@ -11,10 +11,29 @@
         "annex": "Phụ lục II",
         "issued_on": "2021-09-29",
         "effective_from": "2022-01-01",
+        "effective_through": "2026-06-30",
         "official_source": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
         "official_consolidated_form_reference": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-15-vbhn-btc-42004-50395",
         "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
         "verified_form_items": ["01a", "01b", "11a", "11b", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "33", "34", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "form_item_inventory_basis": "base form as issued with TT80; apply effective overlays below for the relevant period; no official workbook export is implemented",
+        "period_specific_overlays": [
+          {
+            "instrument": "40/2025/TT-BTC",
+            "effective_from": "2025-07-01",
+            "official_source": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
+            "field_changes": [
+              {"field": "11a", "change": "label_updated", "label": "Xã/phường/đặc khu"},
+              {"field": "11b", "change": "removed"}
+            ]
+          },
+          {
+            "instrument": "94/2025/TT-BTC",
+            "effective_from": "2025-10-14",
+            "official_source": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-94-2025-tt-btc-46457-59475?format=pdf",
+            "review_summary": "Changes VAT-refund administration and identity-document wording/fields where those fields exist; 01/GTGT has no individual identity-document field, so no 01/GTGT field or formula change was identified."
+          }
+        ],
         "verified_purchase_field_relationships": {
           "source": "https://congbaocdn.chinhphu.vn/CongBaoCP/VanBan/2024/5/42004/50395-1-2024717-71815-vbhn-btc.pdf",
           "official_attachment": "https://congbao.cdnchinhphu.vn/CongBaoCP/VanBan/2021/9/34774/37499-1-2021969-97080-2021-tt-btc.pdf",
@@ -36,10 +55,24 @@
           "41": "36 - 22 + 37 - 38 - 39a",
           "43": "41 - 42"
         },
-        "period_use": "The official consolidated form text confirms 01/GTGT in TT80 Appendix II. For periods before 2026-07-01, also account for TT40/2025 and TT94/2025 address-field updates; TT21/2026 replaces 02/TNDN and 05/TNDN, not 01/GTGT. Filing-period transition and taxpayer case still require human review; no automatic selection.",
+        "conditional_formulas": {
+          "40a": {
+            "expression": "36 - 22 + 37 - 38 - 39a",
+            "condition": "nonnegative",
+            "not_applicable_value": null,
+            "basis": "Official 01/GTGT form: [40a] is the expression when the result is >= 0."
+          },
+          "41": {
+            "expression": "36 - 22 + 37 - 38 - 39a",
+            "condition": "nonpositive",
+            "not_applicable_value": null,
+            "basis": "Official 01/GTGT form: [41] is the expression when the result is <= 0."
+          }
+        },
+        "period_use": "The official consolidated form text confirms 01/GTGT in TT80 Appendix II. TT40/2025 address-field changes and the full official TT94/2025 text were reviewed. TT94 changes VAT-refund administration provisions and identity-document wording/fields on templates that contain those fields; 01/GTGT contains no individual identity-document field, so the review found no 01/GTGT field or formula change. TT21/2026 status for 01/GTGT remains subject to the reviewed form inventory. Filing-period transition and taxpayer case still require human review; no automatic selection.",
         "verified_amendment_notes": [
           "40/2025/TT-BTC updates 01/GTGT address labels: [11a] becomes xã/phường/đặc khu, removes the district field [11b], and updates related notes.",
-          "94/2025/TT-BTC updates TT80 forms, including the administrative-address wording introduced by TT40; it does not replace 01/GTGT or add personal-ID fields to that organizational return.",
+          "94/2025/TT-BTC full text was reviewed in the official Gazette signed attachment (pp. 40–42): Article 1 changes VAT refund administration and adds personal-identity wording/fields to specified templates; Article 2 changes templates under TT40/2021. The review found no 01/GTGT field or formula change because that organizational return has no individual identity-document field.",
           "21/2026/TT-BTC expressly replaces 02/TNDN and 05/TNDN forms; its replacement list does not include 01/GTGT."
         ]
       },
@@ -76,6 +109,20 @@
           "41": "36 - 22 + 37 - 38 - 39a",
           "43": "41 - 42"
         },
+        "conditional_formulas": {
+          "40a": {
+            "expression": "36 - 22 + 37 - 38 - 39a",
+            "condition": "nonnegative",
+            "not_applicable_value": null,
+            "basis": "Official 01/GTGT form: [40a] is the expression when the result is >= 0."
+          },
+          "41": {
+            "expression": "36 - 22 + 37 - 38 - 39a",
+            "condition": "nonpositive",
+            "not_applicable_value": null,
+            "basis": "Official 01/GTGT form: [41] is the expression when the result is <= 0."
+          }
+        },
         "verified_form_constraints": ["40a >= 0", "40b <= 40a", "42 <= 41", "41 <= 0"],
         "official_attachment_checked": true
       }
@@ -93,7 +140,8 @@
         "issued_on": "2025-10-14",
         "effective_from": "2025-10-14",
         "official_source": "https://vanban.chinhphu.vn/?docid=215644&pageid=27160",
-        "review_status": "official_attachment_reviewed; updates TT80 form information and administrative-area wording; no replacement of 01_GTGT identified; period-specific legal effect still requires review"
+        "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2025/10/94-btc.signed.pdf",
+        "review_status": "official_signed_attachment_full_text_reviewed; Article_1_changes_VAT_refund_administration_and_identity_wording_or_fields_where_present; Article_2_changes_TT40_templates; no_01_GTGT_field_or_formula_change_identified; TT80_01_GTGT_mapping_not_blocked_by_TT94"
       },
       {
         "instrument": "21/2026/TT-BTC",

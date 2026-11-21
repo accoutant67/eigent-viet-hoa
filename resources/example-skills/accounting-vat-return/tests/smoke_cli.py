@@ -18,16 +18,26 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         source = root / "synthetic-invoices.csv"
+        tt80_source = root / "synthetic-invoices-tt80.csv"
         output = root / "draft.json"
+        tt80_output = root / "tt80-draft.json"
         review_workbook = root / "review-only.xlsx"
         law_watch_report = root / "law-watch-report.json"
+        supplemental_form_inputs = root / "supplemental-form-inputs.json"
         source.write_text(
             "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
             "2026-08-12,0100000001,0300000001,AA/26E,00017,1000,5%,50,1050,Bình thường,30,31\n"
             "2026-08-13,0100000002,0100000001,BB/26E,00018,2000,10%,200,2200,Bình thường,23,24\n",
             encoding="utf-8",
         )
+        tt80_source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2025-10-15,0100000001,0300000001,AA/25E,00019,1000,5%,50,1050,Bình thường,30,31\n"
+            "2025-10-16,0300000001,0100000001,BB/25E,00020,1000,5%,50,1050,Bình thường,23,24\n",
+            encoding="utf-8",
+        )
         required_sources = [
+            "congbao_tt80_2021",
             "vanban_law_vat_48_2024",
             "vanban_decree_vat_181_2025",
             "vanban_circular_vat_69_2025",
@@ -55,6 +65,23 @@ def main() -> int:
             ),
             encoding="utf-8",
         )
+        supplemental_form_inputs.write_text(
+            json.dumps(
+                {
+                    "22": {"amount": "0", "source": "synthetic fixture confirms zero"},
+                    "25": {
+                        "amount": "50",
+                        "source": "synthetic fixture confirms deductible input VAT",
+                    },
+                    "37": {"amount": "0", "source": "synthetic fixture confirms zero"},
+                    "38": {"amount": "0", "source": "synthetic fixture confirms zero"},
+                    "39a": {"amount": "0", "source": "synthetic fixture confirms zero"},
+                    "40b": {"amount": "0", "source": "synthetic fixture confirms zero"},
+                    "42": {"amount": "0", "source": "synthetic fixture confirms zero"},
+                }
+            ),
+            encoding="utf-8",
+        )
         run = subprocess.run(
             [
                 sys.executable,
@@ -66,8 +93,15 @@ def main() -> int:
                 "2026-Q3",
                 "--form-version",
                 "89/2026/TT-BTC",
+                "--taxpayer-case",
+                "credit_method_production_business",
+                "--filing-type",
+                "first",
+                "--invoice-data-complete",
                 "--law-watch-report",
                 str(law_watch_report),
+                "--supplemental-form-inputs",
+                str(supplemental_form_inputs),
                 "--output",
                 str(output),
             ],
@@ -90,10 +124,48 @@ def main() -> int:
         assert draft["form_field_draft"]["amounts"]["24a"] == "0"
         assert draft["form_field_draft"]["amounts"]["27"] == "1000"
         assert draft["form_field_draft"]["amounts"]["34"] == "1000"
+        assert draft["form_field_draft"]["calculation_complete"] is True
+        assert draft["form_field_draft"]["amounts"]["40a"] == "0"
+        assert draft["form_field_draft"]["amounts"]["41"] == "0"
         assert draft["form_field_draft"]["independent_check"]["status"] == "pass"
         assert draft["legal_form"]["version"] == "89/2026/TT-BTC"
         assert draft["legal_form"]["submission_ready"] is False
         assert draft["legal_form"]["xml_export"] == "NOT_STARTED_SCHEMA_NOT_VERIFIED"
+        tt80_run = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                str(tt80_source),
+                "--taxpayer-tax-id",
+                "0100000001",
+                "--period",
+                "2025-Q4",
+                "--form-version",
+                "80/2021/TT-BTC",
+                "--taxpayer-case",
+                "credit_method_production_business",
+                "--filing-type",
+                "first",
+                "--invoice-data-complete",
+                "--law-watch-report",
+                str(law_watch_report),
+                "--supplemental-form-inputs",
+                str(supplemental_form_inputs),
+                "--output",
+                str(tt80_output),
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+        if tt80_run.returncode != 0:
+            raise SystemExit(tt80_run.stderr or tt80_run.stdout)
+        tt80_draft = json.loads(tt80_output.read_text(encoding="utf-8"))
+        assert tt80_draft["draft_status"] == "draft_ready_for_review"
+        assert tt80_draft["legal_form"]["version"] == "80/2021/TT-BTC"
+        assert tt80_draft["legal_form"]["applicability_review"]["status"] == "pass"
+        assert tt80_draft["form_field_draft"]["amounts"]["30"] == "1000"
+        assert tt80_draft["form_field_draft"]["independent_check"]["status"] == "pass"
         workbook_run = subprocess.run(
             [
                 sys.executable,
@@ -105,8 +177,15 @@ def main() -> int:
                 "2026-Q3",
                 "--form-version",
                 "89/2026/TT-BTC",
+                "--taxpayer-case",
+                "credit_method_production_business",
+                "--filing-type",
+                "first",
+                "--invoice-data-complete",
                 "--law-watch-report",
                 str(law_watch_report),
+                "--supplemental-form-inputs",
+                str(supplemental_form_inputs),
                 "--output",
                 str(review_workbook),
             ],
@@ -129,10 +208,12 @@ def main() -> int:
             assert "KHÔNG PHẢI TỜ KHAI CHÍNH THỨC" in warning_xml
             assert "NOT STARTED" in warning_xml
             assert b"<f" not in b"".join(
-                archive.read(name) for name in archive.namelist() if name.endswith(".xml")
+                archive.read(name)
+                for name in archive.namelist()
+                if name.endswith(".xml")
             )
         print(
-            "PASS: import -> classify -> validate -> aggregate -> TT89 field draft -> independent check -> JSON and review-only XLSX export"
+            "PASS: import -> classify -> validate -> aggregate -> TT80 Q4 2025 and TT89 Q3 2026 draft -> independent check -> JSON and review-only XLSX export"
         )
         print(
             "INFO: law-watch input is synthetic fixture data, not a live-source result"
