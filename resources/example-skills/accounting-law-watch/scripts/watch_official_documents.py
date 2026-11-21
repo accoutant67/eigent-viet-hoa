@@ -12,7 +12,7 @@ from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 OFFICIAL_LISTING_URL = (
     "https://vanban.chinhphu.vn/he-thong-van-ban?classid=0&maxresults=50&mode=1"
@@ -99,6 +99,14 @@ def official_url(value: str, base_url: str = OFFICIAL_LISTING_URL) -> str:
     return resolved
 
 
+class _AllowlistedRedirectHandler(HTTPRedirectHandler):
+    """Reject redirects before the client contacts a non-allowlisted host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        official_url(newurl, req.full_url)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 class _PortalListingParser(HTMLParser):
     """Collect table rows and links without relying on portal CSS classes."""
 
@@ -156,7 +164,9 @@ def _doc_id(url: str) -> str | None:
         return None
 
 
-def parse_listing(html: str, base_url: str = OFFICIAL_LISTING_URL) -> list[dict[str, str | None]]:
+def parse_listing(
+    html: str, base_url: str = OFFICIAL_LISTING_URL
+) -> list[dict[str, str | None]]:
     parser = _PortalListingParser()
     parser.feed(html)
     rows = parser.rows
@@ -176,7 +186,9 @@ def parse_listing(html: str, base_url: str = OFFICIAL_LISTING_URL) -> list[dict[
             except ValueError:
                 continue
             if _doc_id(resolved):
-                normalized_links.append({"href": resolved, "text": link.get("text", "")})
+                normalized_links.append(
+                    {"href": resolved, "text": link.get("text", "")}
+                )
         if not normalized_links:
             continue
 
@@ -377,11 +389,20 @@ def build_report(
         citation = str(entry.get("citation") or "")
         normalized_citation = normalize_citation(citation)
         title = str(entry.get("title") or "")
-        if not citation or normalized_citation in known or not is_relevant_document(citation, title):
+        if (
+            not citation
+            or normalized_citation in known
+            or not is_relevant_document(citation, title)
+        ):
             continue
         published_on = entry.get("published_on")
         if not published_on:
-            deferred.append({**entry, "reason": "Không đọc được ngày trên danh sách nguồn; chưa kết luận văn bản mới."})
+            deferred.append(
+                {
+                    **entry,
+                    "reason": "Không đọc được ngày trên danh sách nguồn; chưa kết luận văn bản mới.",
+                }
+            )
             continue
         if monitor_from and str(published_on) < monitor_from:
             continue
@@ -391,7 +412,9 @@ def build_report(
                 detail_html = detail_fetcher(str(entry["source_url"]))
                 metadata.update(parse_detail_metadata(detail_html))
                 details_read += 1
-            except Exception as exc:  # Network/detail-page issues must not invent dates.
+            except (
+                Exception
+            ) as exc:  # Network/detail-page issues must not invent dates.
                 metadata["detail_error"] = type(exc).__name__
                 details_read += 1
         elif detail_fetcher:
@@ -419,7 +442,8 @@ def build_report(
 def fetch_official_page(url: str, timeout: int = 20) -> str:
     safe_url = official_url(url)
     request = Request(safe_url, headers={"User-Agent": USER_AGENT})
-    with urlopen(request, timeout=timeout) as response:
+    opener = build_opener(_AllowlistedRedirectHandler())
+    with opener.open(request, timeout=timeout) as response:
         official_url(response.geturl(), safe_url)
         content_type = response.headers.get_content_type()
         if content_type not in {"text/html", "application/xhtml+xml"}:
@@ -459,7 +483,9 @@ def main(argv: list[str] | None = None) -> int:
                 source_accessed=True,
             )
             if not report["listing_entries"]:
-                raise RuntimeError("Đã truy cập nguồn nhưng không đọc được văn bản từ danh sách")
+                raise RuntimeError(
+                    "Đã truy cập nguồn nhưng không đọc được văn bản từ danh sách"
+                )
         else:
             html = args.fixture.read_text(encoding="utf-8")
             report = build_report(html, registry)

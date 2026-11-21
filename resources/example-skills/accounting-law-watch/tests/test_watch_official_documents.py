@@ -98,7 +98,9 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual([item["citation"] for item in current_year], ["NEW-VAT-RULE"])
         self.assertEqual(json.dumps(data, ensure_ascii=False, sort_keys=True), original)
 
-    def test_issue_proposal_has_source_effective_period_review_and_no_auto_apply(self) -> None:
+    def test_issue_proposal_has_source_effective_period_review_and_no_auto_apply(
+        self,
+    ) -> None:
         report = watch.build_report(
             FIXTURE.read_text(encoding="utf-8"),
             registry(),
@@ -128,11 +130,26 @@ class OfficialLawWatchTests(unittest.TestCase):
             watch.official_url("https://example.com/fake-law")
 
     def test_official_source_redirect_cannot_leave_the_allowlisted_host(self) -> None:
-        with patch.object(watch, "urlopen") as open_url:
-            response = open_url.return_value.__enter__.return_value
+        with patch.object(watch, "build_opener") as build_opener:
+            response = (
+                build_opener.return_value.open.return_value.__enter__.return_value
+            )
             response.geturl.return_value = "https://example.com/redirected-law"
             with self.assertRaises(ValueError):
                 watch.fetch_official_page(watch.OFFICIAL_LISTING_URL)
+
+    def test_external_redirect_is_rejected_before_following(self) -> None:
+        handler = watch._AllowlistedRedirectHandler()
+        request = watch.Request(watch.OFFICIAL_LISTING_URL)
+        with self.assertRaises(ValueError):
+            handler.redirect_request(
+                request,
+                None,
+                302,
+                "Found",
+                {},
+                "https://example.com/redirected-law",
+            )
 
     def test_issue_publisher_dry_run_builds_issue_without_network(self) -> None:
         issue = {
@@ -191,12 +208,15 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual(created, ["New proposal"])
         self.assertEqual(request.call_count, 2)
         self.assertEqual(request.call_args_list[0].args[0], "GET")
-        self.assertEqual(request.call_args_list[1], call(
-            "POST",
-            "https://api.github.com/repos/owner/repo/issues",
-            "synthetic-token",
-            {"title": "New proposal", "body": new_issue["body"]},
-        ))
+        self.assertEqual(
+            request.call_args_list[1],
+            call(
+                "POST",
+                "https://api.github.com/repos/owner/repo/issues",
+                "synthetic-token",
+                {"title": "New proposal", "body": new_issue["body"]},
+            ),
+        )
 
 
 if __name__ == "__main__":
