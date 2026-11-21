@@ -745,9 +745,7 @@ def _form_field_draft(
     external_amounts, external_sources = _normalize_supplemental_form_inputs(
         supplemental_form_inputs
     )
-    values: dict[str, Decimal | None] = {
-        code: None for code in FORM_EXTERNAL_INPUTS
-    }
+    values: dict[str, Decimal | None] = {code: None for code in FORM_EXTERNAL_INPUTS}
     values.update(external_amounts)
     source_rows_by_line: dict[str, set[int]] = defaultdict(set)
     findings: list[dict[str, Any]] = []
@@ -1009,7 +1007,8 @@ def _form_field_draft(
             traceability[code] = {
                 "source_type": "invoice_rows" if source_rows else "no_source_rows",
                 "source_fields": [
-                    "tax_amount" if code in FORM_TAX_FIELDS | FORM_PURCHASE_TAX_FIELDS
+                    "tax_amount"
+                    if code in FORM_TAX_FIELDS | FORM_PURCHASE_TAX_FIELDS
                     else "net_amount"
                 ],
                 "source_rows": source_rows,
@@ -1482,14 +1481,16 @@ def build_draft(
         else None
     )
     applicability_review = (
-        _review_form_applicability(
-            period, form_version, taxpayer_case, filing_type
-        )
+        _review_form_applicability(period, form_version, taxpayer_case, filing_type)
         if form_version
         else None
     )
     form_review_failures: list[dict[str, Any]] = []
-    if form_version and applicability_review and applicability_review["status"] != "pass":
+    if (
+        form_version
+        and applicability_review
+        and applicability_review["status"] != "pass"
+    ):
         form_review_failures.append(
             {
                 "severity": "block",
@@ -1707,10 +1708,9 @@ def write_draft(
     if output_format not in {".json", ".xlsx"}:
         raise VatDraftError("Chỉ xuất JSON hoặc workbook XLSX soát xét nội bộ.")
     source_name = str(draft.get("source_file", ""))
-    if (
-        destination.name == source_name
-        and draft.get("input_format") == output_format.lstrip(".")
-    ):
+    if destination.name == source_name and draft.get(
+        "input_format"
+    ) == output_format.lstrip("."):
         raise VatDraftError("Không được ghi đè workbook hoặc CSV nguồn.")
     if destination.exists() and not force:
         raise VatDraftError("Tệp dự thảo đã tồn tại; dùng --force khi muốn ghi đè.")
@@ -1795,7 +1795,10 @@ def _internal_review_sheets(
         ["Kỳ kê khai", period.get("label", "")],
         ["MST người nộp thuế", draft.get("taxpayer_tax_id", "")],
         ["Tệp nguồn", draft.get("source_file", "")],
-        ["Phiên bản mẫu được chọn tường minh", legal_form.get("version") or "Chưa chọn"],
+        [
+            "Phiên bản mẫu được chọn tường minh",
+            legal_form.get("version") or "Chưa chọn",
+        ],
         ["Kết quả kiểm tra nguồn pháp luật", law_watch.get("status", "not_run")],
         [
             "Đối chiếu độc lập",
@@ -1819,15 +1822,16 @@ def _internal_review_sheets(
         draft.get("totals", {}).get("by_direction_and_invoice_rate_label", {}).items()
     ):
         for key, value in values.items():
-            summary.append(
-                [bucket, key, value, "Giữ nguyên nhãn thuế suất từ nguồn"]
-            )
+            summary.append([bucket, key, value, "Giữ nguyên nhãn thuế suất từ nguồn"])
     if form_fields:
+
         def field_order(item: tuple[str, Any]) -> tuple[int, str]:
             match = re.match(r"\d+", item[0])
             return (int(match.group()) if match else 999, item[0])
 
-        for code, value in sorted(form_fields.get("amounts", {}).items(), key=field_order):
+        for code, value in sorted(
+            form_fields.get("amounts", {}).items(), key=field_order
+        ):
             summary.append(
                 [
                     "Chỉ tiêu mẫu — dự thảo",

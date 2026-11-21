@@ -69,7 +69,10 @@ def main() -> int:
             json.dumps(
                 {
                     "22": {"amount": "0", "source": "synthetic fixture confirms zero"},
-                    "25": {"amount": "50", "source": "synthetic fixture confirms deductible input VAT"},
+                    "25": {
+                        "amount": "50",
+                        "source": "synthetic fixture confirms deductible input VAT",
+                    },
                     "37": {"amount": "0", "source": "synthetic fixture confirms zero"},
                     "38": {"amount": "0", "source": "synthetic fixture confirms zero"},
                     "39a": {"amount": "0", "source": "synthetic fixture confirms zero"},
@@ -205,7 +208,9 @@ def main() -> int:
             assert "KHÔNG PHẢI TỜ KHAI CHÍNH THỨC" in warning_xml
             assert "NOT STARTED" in warning_xml
             assert b"<f" not in b"".join(
-                archive.read(name) for name in archive.namelist() if name.endswith(".xml")
+                archive.read(name)
+                for name in archive.namelist()
+                if name.endswith(".xml")
             )
         print(
             "PASS: import -> classify -> validate -> aggregate -> TT80 Q4 2025 and TT89 Q3 2026 draft -> independent check -> JSON and review-only XLSX export"

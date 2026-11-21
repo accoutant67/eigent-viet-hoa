@@ -357,7 +357,9 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertFalse(loaded["legal_form"]["submission_ready"])
         self.assertEqual(loaded["draft_status"], "draft_ready_unmapped")
 
-    def test_xlsx_source_exports_internal_review_workbook_without_mutation(self) -> None:
+    def test_xlsx_source_exports_internal_review_workbook_without_mutation(
+        self,
+    ) -> None:
         original = self.workbook.read_bytes()
         draft = build_ready_form_draft(
             self.workbook, "0100000001", "2026-Q3", sheet_name="HoaDon"
@@ -392,7 +394,9 @@ class VatReturnDraftTests(unittest.TestCase):
             self.assertIn("BẢN SOÁT XÉT NỘI BỘ", all_text)
             self.assertIn("không thay thế mẫu 01/GTGT", all_text)
             self.assertIn("00017", all_text)
-            self.assertNotIn("<f", " ".join(archive.read(name).decode() for name in xml_parts))
+            self.assertNotIn(
+                "<f", " ".join(archive.read(name).decode() for name in xml_parts)
+            )
         review = load_workbook(output, read_only=True, data_only=False)
         self.addCleanup(review.close)
         self.assertEqual(
@@ -622,7 +626,8 @@ class VatReturnDraftTests(unittest.TestCase):
         )
         self.assertEqual(draft["draft_status"], "blocked_review_required")
         self.assertEqual(
-            draft["form_field_draft"]["mapping_status"], "blocked_applicability_or_legal_review"
+            draft["form_field_draft"]["mapping_status"],
+            "blocked_applicability_or_legal_review",
         )
         self.assertEqual(
             draft["legal_form"]["law_watch_review"]["reason"],
@@ -655,7 +660,8 @@ class VatReturnDraftTests(unittest.TestCase):
             draft["legal_form"]["law_watch_review"]["reason_codes"],
         )
         self.assertEqual(
-            draft["form_field_draft"]["mapping_status"], "blocked_applicability_or_legal_review"
+            draft["form_field_draft"]["mapping_status"],
+            "blocked_applicability_or_legal_review",
         )
 
     def test_form_draft_requires_confirmation_when_sales_are_absent(self) -> None:
@@ -980,11 +986,15 @@ class VatReturnDraftTests(unittest.TestCase):
             "38": vat.Decimal("0"),
             "39a": vat.Decimal("0"),
         }
-        self.assertEqual(vat._evaluate_catalog_formula("40a", spec, values), vat.Decimal("10"))
+        self.assertEqual(
+            vat._evaluate_catalog_formula("40a", spec, values), vat.Decimal("10")
+        )
         self.assertIsNone(vat._evaluate_catalog_formula("41", spec, values))
         values["36"] = vat.Decimal("-10")
         self.assertIsNone(vat._evaluate_catalog_formula("40a", spec, values))
-        self.assertEqual(vat._evaluate_catalog_formula("41", spec, values), vat.Decimal("-10"))
+        self.assertEqual(
+            vat._evaluate_catalog_formula("41", spec, values), vat.Decimal("-10")
+        )
 
     def test_supplemental_form_input_requires_amount_and_traceable_source(self) -> None:
         with self.assertRaises(vat.VatDraftError):
