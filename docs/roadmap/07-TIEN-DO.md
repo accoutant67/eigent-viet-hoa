@@ -22,7 +22,7 @@ PR #3 [`fix: verify TT94 impact on 01/GTGT applicability`](https://github.com/ac
 
 PR #4 [`feat: track 2026 tax and e-invoice sources for VAT`](https://github.com/accoutant67/eigent-viet-hoa/pull/4) là draft/open, xếp sau PR #3; head `4a67adb2de9e452da6d04478d5760aa2bf7b6df5`. Phạm vi riêng là registry nguồn pháp luật GTGT năm 2026 và kiểm tra theo kỳ; các bằng chứng CI/live check hiện ghi trong mô tả PR. Chưa merge.
 
-PR #5 [`feat: export draft 01/GTGT PDF on verified forms`](https://github.com/accoutant67/eigent-viet-hoa/pull/5) là draft/open, xếp sau PR #3 trên nhánh `codex/vat-official-form-draft`, head `b2e670b4c77e2355d6721746a90de94ee48700c4`. So với PR #3 có đúng 1 commit và 15 tệp; VAT 39/39, law-watch 13/13, Excel audit 8/8, Skill integration 1/1 và smoke đều PASS cục bộ. GitHub Actions chưa xuất hiện ở lần kiểm tra gần nhất; tiếp tục xác minh. Không PR nào được merge.
+PR #5 [`feat: export draft 01/GTGT PDF on verified forms`](https://github.com/accoutant67/eigent-viet-hoa/pull/5) là draft/open, xếp sau PR #3 trên nhánh `codex/vat-official-form-draft`, gồm thay đổi trên 15 tệp. VAT 39/39, law-watch 13/13, Excel audit 8/8, Skill integration 1/1 và smoke đều PASS cục bộ. GitHub VAT workflow [44925723245](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44925723245) PASS; full Test workflow [44926595604](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44926595604) PASS trên mã nguồn của PR #5: Python 4.595 passed, 11 skipped, 110 warnings, 11 subtests; frontend, web smoke, Electron preview/relay đều PASS. Các PR vẫn draft/open, chưa merge.
 
 Nhánh GTGT tách khỏi PR #1. Skill `accounting-vat-return` đọc `.xlsx`/`.csv`, phân loại theo MST, soát hóa đơn/kỳ, tổng hợp và đối chiếu độc lập; xuất JSON/XLSX nội bộ hoặc PDF dự thảo chồng trên đúng mẫu 01/GTGT. PDF lấy tên/MST từ đầu vào tường minh, chỉ điền số tiền đã có, giữ ô thiếu trống, cập nhật nhãn và ghi chú TT40 từ kỳ 07/2025, đồng thời đóng dấu “DỰ THẢO — CHƯA KÝ — CHƯA NỘP”. Workbook pháp định, XML, ký/nộp và khai bổ sung chưa triển khai.
 
@@ -56,7 +56,7 @@ Các nhóm người dùng bổ sung như hồ sơ nhân sự, hợp đồng/quy�
 
 ## Lộ trình kế tiếp
 
-1. Xác nhận GitHub Actions cho PR #5 về PDF dự thảo 01/GTGT; xử lý lỗi CI nếu có. Giữ PR #5 dạng draft và xếp sau PR #3.
+1. Giữ PR #5 dạng draft/open sau PR #3 trong khi chờ duyệt; không merge trước khi được phê duyệt.
 1. Hoàn tất đối chiếu điều khoản chuyển tiếp; thiết kế bản dự thảo có ánh xạ trường được người có chuyên môn duyệt. Chưa tạo XML cho tới khi schema chính thức được xác minh.
 1. Mở rộng nhập hóa đơn theo định dạng và trạng thái được kiểm chứng, rồi thêm quy trình TNCN quý → TNDN tạm nộp/quyết toán năm → bộ BCTC.
 1. Chuyển từng vai trò còn lại thành chức năng Eigent có công cụ, phân quyền, đầu vào/đầu ra và test; kiểm soát trùng vai trò trước khi đăng ký Agent.

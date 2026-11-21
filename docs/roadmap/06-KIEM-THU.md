@@ -191,7 +191,7 @@ Nhánh `codex/vat-official-form-draft` là PR #5 draft/open, nối sau PR #3; PR
 | Eigent Skill integration | **PASS 1/1** trên Python 3.11.11 |
 | Ruff import/function checks và `git diff --check` | **PASS** |
 
-Chỉ dùng fixture giả lập; không dùng dữ liệu người nộp thuế thật. Đầu ra là PDF dự thảo, không ký/nộp; pháp định XLSX, XML/schema và hồ sơ bổ sung vẫn chưa triển khai. PR #5 đã mở ở trạng thái draft; GitHub Actions chưa hiện run/status ở lần kiểm tra gần nhất.
+Chỉ dùng fixture giả lập; không dùng dữ liệu người nộp thuế thật. Đầu ra là PDF dự thảo, không ký/nộp; pháp định XLSX, XML/schema và hồ sơ bổ sung vẫn chưa triển khai. PR #5 đang draft/open. VAT workflow [44925723245](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44925723245) PASS; Test workflow [44926595604](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44926595604) PASS trên code head `ed7364f` (Python 4.595 passed, 11 skipped, 110 warnings, 11 subtests; frontend, web smoke và Electron preview/relay đều PASS).
 
 ### Phạm vi còn chặn
 
