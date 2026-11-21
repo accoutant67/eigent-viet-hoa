@@ -7,10 +7,11 @@ description: "Theo dõi văn bản pháp luật kế toán, thuế, hóa đơn v
 
 ## Phạm vi hiện có
 
-- Nguồn tự động ban đầu là trang hệ thống văn bản của Cổng Thông tin điện tử Chính phủ: https://vanban.chinhphu.vn/he-thong-van-ban?classid=0&maxresults=50&mode=1 .
+- Nguồn phát hiện văn bản mới vẫn là trang hệ thống văn bản của Cổng Thông tin điện tử Chính phủ: https://vanban.chinhphu.vn/he-thong-van-ban?classid=0&maxresults=50&mode=1 .
+- Các trang Công báo điện tử Chính phủ và một số trang hỗ trợ pháp lý Bộ Tài chính được kiểm tra để xác nhận tham chiếu đã biết. Chúng hiện là nguồn đối chiếu, chưa phải nguồn feed phát hiện thay đổi riêng.
 - Registry ghi lại số hiệu đã biết và metadata nguồn để tránh lặp đề xuất. Registry này không chứa công thức kế toán/thuế và không được sửa tự động.
-- TT99/2025/TT-BTC và TT89/2026/TT-BTC được ghi nhận làm dữ liệu nền. Với TT89, phạm vi kỳ áp dụng cho từng tờ khai còn phải được xác minh; không suy luận từ ngày hiệu lực.
-- Theo dõi thêm nguồn Bộ Tài chính, CSDL quốc gia về VBPL, cơ quan thuế và BHXH cần được tích hợp riêng sau khi xác minh được trang/API ổn định.
+- TT80/2021, TT40/2025, TT94/2025, TT21/2026, TT89/2026 và QĐ2551/2026 được ghi nhận làm dữ liệu nền liên quan đến rà soát tờ khai GTGT. Chuỗi sửa đổi, phụ lục, phạm vi mẫu và kỳ áp dụng vẫn cần kiểm tra văn bản gốc trước khi duyệt.
+- Kiểm tra nguồn tham chiếu bổ sung được cấu hình trong `registry.json`; mỗi lần chạy trực tiếp ghi trạng thái PASS/BLOCKED theo nguồn. Kiểm tra truy cập không đồng nghĩa với đã xác minh nội dung pháp lý.
 
 ## Cách chạy
 
@@ -35,7 +36,7 @@ Publisher hỗ trợ `--dry-run` để kiểm tra Issue sẽ được đề xu�
 
 ## Quy trình xử lý đề xuất
 
-1. Xác nhận nguồn thuộc `vanban.chinhphu.vn` qua HTTPS; nếu không đọc được trang hoặc metadata thì báo lỗi/CHƯA XÁC MINH.
+1. Xác nhận nguồn thuộc danh sách hostname cơ quan nhà nước qua HTTPS và kiểm tra cả URL cuối sau redirect; nếu không đọc được trang hoặc metadata thì báo lỗi/CHƯA XÁC MINH.
 2. So số hiệu với `registry.json`, ngày trên danh sách, ngày ban hành và ngày hiệu lực trên trang văn bản.
 3. Tạo Issue đề xuất có liên kết nguồn, số hiệu và ngày; phạm vi kỳ kế toán/thuế vẫn là CHƯA XÁC MINH cho tới khi đọc điều khoản hiệu lực/chuyển tiếp.
 4. Người có chuyên môn xác định văn bản cũ bị sửa, thay thế hay vẫn áp dụng cho kỳ cũ; cập nhật mapping/kỳ trong PR riêng sau khi được duyệt.
