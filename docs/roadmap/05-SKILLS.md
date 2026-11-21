@@ -1,6 +1,6 @@
 # Lộ trình Skills kế toán
 
-**Trạng thái:** Ba Skill kế toán mẫu có mã trong `resources/example-skills/`: kiểm toán workbook, theo dõi pháp luật và dự thảo GTGT. Skill GTGT mới xử lý dữ liệu đầu vào đến JSON nội bộ; các biểu mẫu pháp định, XML và 12 nhóm Skill còn lại chưa hoàn tất.
+**Trạng thái:** Ba Skill kế toán mẫu có mã trong `resources/example-skills/`: kiểm toán workbook, theo dõi pháp luật và dự thảo GTGT. Skill GTGT xử lý `.xlsx`/`.csv` đến JSON hoặc workbook XLSX soát xét nội bộ; chưa tạo mẫu pháp định/XML. 12 nhóm Skill còn lại được giữ trong roadmap.
 
 Backend hiện có cơ chế đồng bộ Skills mẫu từ resources/example-skills và SkillToolkit để phát hiện Skill trong phạm vi làm việc. Skill xlsx hiện có là Skill tổng quát.
 
@@ -30,8 +30,9 @@ CI của Skill chạy unittest với workbook giả lập. Trạng thái nghiệ
 - Đường dẫn: resources/example-skills/accounting-vat-return/.
 - Đầu vào: `.xlsx`/`.csv` giả lập hoặc dữ liệu người dùng chạy cục bộ; giữ nguyên tệp nguồn, mã `00017`, định danh đối chiếu theo MST.
 - Luồng hiện có: nhập → phân loại mua/bán → kiểm tra → tổng hợp theo nhãn thuế suất nguồn → đối chiếu độc lập → xuất JSON dự thảo nội bộ.
-- Kiểm thử hiện tại: 11/11 test đơn vị, CLI smoke và test tích hợp Eigent 1/1 PASS; full backend regression cục bộ đang BLOCKED do bị hệ thống kết thúc mã 137.
-- Giới hạn: các vai trò HD01–HD04, TK01, TK05, BM01–BM03, PL01–PL04 và KTT03 là bản đồ quy trình trong Skill, chưa phải Agents đăng ký; chưa ánh xạ chỉ tiêu pháp định, chưa xuất XLSX/XML hoặc nộp tờ khai.
+- Kiểm thử cập nhật 21/11/2026: VAT 25/25, Eigent Skill integration 1/1, law-watch 16/16, Excel audit 8/8; backend CI 4.595 passed, 11 skipped, 110 warnings, 11 subtests. ChatBox 1.113/1.113, i18n, type-check, web/backend smoke và Electron preview/relay PASS trên CI.
+- Kết quả `.xlsx` được đọc ngược bằng `openpyxl`: giữ `00017`, không công thức, không sửa workbook nguồn. Đầu ra XLSX chỉ là bản soát xét nội bộ.
+- Giới hạn: HD01–HD04, TK01, TK05, BM01–BM03, PL01–PL04 và KTT03 là trách nhiệm trong một pipeline Skill, chưa phải Agents đăng ký; chưa điền/xuất workbook pháp định, chưa xác minh XML schema và chưa nộp tờ khai.
 
 ## Danh sách ưu tiên tiếp theo
 
