@@ -8,6 +8,8 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from openpyxl import load_workbook
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import vat_return_draft as vat
 
@@ -378,6 +380,21 @@ class VatReturnDraftTests(unittest.TestCase):
             self.assertIn("không thay thế mẫu 01/GTGT", all_text)
             self.assertIn("00017", all_text)
             self.assertNotIn("<f", " ".join(archive.read(name).decode() for name in xml_parts))
+        review = load_workbook(output, read_only=True, data_only=False)
+        self.addCleanup(review.close)
+        self.assertEqual(
+            review.sheetnames,
+            ["00_Canh bao", "01_Tong hop", "02_Hoa don", "03_Ngoai le"],
+        )
+        self.assertEqual(review["02_Hoa don"]["I2"].value, "00017")
+        self.assertFalse(
+            any(
+                cell.data_type == "f"
+                for sheet in review.worksheets
+                for row in sheet.iter_rows()
+                for cell in row
+            )
+        )
         self.assertFalse(draft["legal_form"]["submission_ready"])
 
     def test_tt89_form_draft_blocks_when_tt110_source_is_not_verified(self) -> None:
