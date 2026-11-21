@@ -120,16 +120,6 @@
       "expected_marker": "2551/QĐ-BTC"
     },
     {
-      "name": "mof_official_answer_tt80_01_gtgt",
-      "url": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
-      "expected_marker": "01/GTGT"
-    },
-    {
-      "name": "mof_question_reference_tt89_form_only",
-      "url": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/165862",
-      "expected_marker": "01/GTGT"
-    },
-    {
       "name": "mof_vbpq_official_database_guide",
       "url": "https://vbpq.mof.gov.vn/Huongdankhaithac",
       "expected_marker": "CSDL văn bản pháp quy ngành Tài chính"

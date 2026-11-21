@@ -13,8 +13,18 @@
         "effective_from": "2022-01-01",
         "official_source": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
         "official_consolidated_form_reference": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-15-vbhn-btc-42004-50395",
-        "official_supporting_reference": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
+        "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
         "verified_form_items": ["01a", "01b", "11a", "11b", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "33", "34", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_purchase_field_relationships": {
+          "source": "https://congbaocdn.chinhphu.vn/CongBaoCP/VanBan/2024/5/42004/50395-1-2024717-71815-vbhn-btc.pdf",
+          "official_attachment": "https://congbao.cdnchinhphu.vn/CongBaoCP/VanBan/2021/9/34774/37499-1-2021969-97080-2021-tt-btc.pdf",
+          "printed_form_page": 19,
+          "total_purchase_value": "23",
+          "imported_purchase_value_subset": "23a",
+          "total_purchase_vat": "24",
+          "imported_purchase_vat_subset": "24a",
+          "relationship": "23a is included in 23; 24a is included in 24; do not add either subset to its total a second time"
+        },
         "verified_form_formulas": {
           "27": "29 + 30 + 32 + 32a",
           "28": "31 + 33",
@@ -45,6 +55,16 @@
         "period_use": "Official Government metadata gives an effective date of 2026-07-01. The signed official attachment was checked directly: Annex I, printed page 241 contains form 01/GTGT, including month/quarter period, field [32b], field [34a], and the updated totals formulas. Use for a tax period only after transition and taxpayer-case review; no automatic selection.",
         "verified_form_page": 241,
         "verified_form_items": ["01a", "01b", "11a", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "32b", "33", "34", "34a", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_purchase_field_relationships": {
+          "source": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
+          "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
+          "printed_form_page": 241,
+          "total_purchase_value": "23",
+          "imported_purchase_value_subset": "23a",
+          "total_purchase_vat": "24",
+          "imported_purchase_vat_subset": "24a",
+          "relationship": "23a is included in 23; 24a is included in 24; do not add either subset to its total a second time"
+        },
         "verified_form_formulas": {
           "27": "29 + 30 + 32 + 32a - 32b",
           "28": "31 + 33",

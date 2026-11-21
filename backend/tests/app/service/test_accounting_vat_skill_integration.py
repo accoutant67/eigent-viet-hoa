@@ -72,7 +72,9 @@ def test_vat_skill_is_discovered_once_and_scoped(
         "PL04",
         "KTT03",
     }
-    assert roles["agent_registration"].startswith("none;")
+    assert roles["agent_registration"] == "none"
+    assert roles["execution_model"].startswith("one Eigent Skill pipeline")
+    assert all(item.get("implementation_status") for item in roles["roles"])
 
     config = skill_config_service.skill_config_init("synthetic_vat_user")
     assert config["skills"][SKILL_NAME]["enabled"] is True

@@ -170,6 +170,41 @@ def make_workbook(
         archive.writestr("xl/worksheets/sheet1.xml", xml(worksheet))
 
 
+def write_law_watch_report(path: Path, version: str) -> Path:
+    required_sources = {
+        "80/2021/TT-BTC": [
+            "congbao_tt80_2021",
+            "vanban_tt40_2025_tt80_form_update",
+            "vanban_tt94_2025_tt80_update",
+            "vanban_tt21_2026_tt80_update",
+        ],
+        "89/2026/TT-BTC": [
+            "vanban_law_vat_48_2024",
+            "vanban_decree_vat_181_2025",
+            "vanban_circular_vat_69_2025",
+            "vanban_tt89_2026",
+            "vanban_tt40_2025_tt80_form_update",
+            "vanban_tt94_2025_tt80_update",
+            "vanban_tt21_2026_tt80_update",
+            "congbao_correction_2551_2026",
+        ],
+    }[version]
+    report = {
+        "fixture_only": True,
+        "checked_at": "2099-01-01T00:00:00+00:00",
+        "source_accessed": True,
+        "listing_entries": 50,
+        "proposals": [],
+        "approved_period_metadata_unchanged": True,
+        "auto_applied": False,
+        "official_reference_checks": [
+            {"name": name, "status": "pass"} for name in required_sources
+        ],
+    }
+    path.write_text(json.dumps(report), encoding="utf-8")
+    return path
+
+
 class VatReturnDraftTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -358,6 +393,18 @@ class VatReturnDraftTests(unittest.TestCase):
             versions["80/2021/TT-BTC"]["verified_form_formulas"]["27"],
             "29 + 30 + 32 + 32a",
         )
+        self.assertEqual(
+            versions["80/2021/TT-BTC"]["verified_purchase_field_relationships"][
+                "imported_purchase_value_subset"
+            ],
+            "23a",
+        )
+        self.assertEqual(
+            versions["89/2026/TT-BTC"]["verified_purchase_field_relationships"][
+                "imported_purchase_vat_subset"
+            ],
+            "24a",
+        )
         self.assertIn(
             "40b <= 40a",
             versions["89/2026/TT-BTC"]["verified_form_constraints"],
@@ -369,6 +416,343 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertEqual(
             form["related_annexes"]["status"],
             "official_inventory_identified_applicability_review_required",
+        )
+
+    def test_explicit_tt89_lines_keep_categories_distinct_and_recompute_formulas(
+        self,
+    ) -> None:
+        source = self.root / "mapped-tt89.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0100000001,0300000001,S1,1,1000,0%,0,1000,Bình thường,[29],\n"
+            "2026-08-02,0100000001,0300000002,S2,2,500,5%,25,525,Bình thường,[30],[31]\n"
+            "2026-08-03,0100000001,0300000003,S3,3,200,10%,20,220,Bình thường,[32],[33]\n"
+            "2026-08-04,0100000001,0300000004,S4,4,100,không kê khai,0,100,Bình thường,[32a],\n"
+            "2026-08-05,0100000001,0300000005,S5,5,10,không tính giá tính thuế,0,10,Bình thường,[32b],\n"
+            "2026-08-06,0100000001,0300000006,S6,6,300,không chịu thuế,0,300,Bình thường,[26],\n"
+            "2026-08-07,0100000001,0300000007,S7,7,70,ngoài phạm vi,0,70,Bình thường,[34a],\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "89/2026/TT-BTC"
+            ),
+        )
+        field_draft = draft["form_field_draft"]
+        self.assertEqual(draft["draft_status"], "draft_ready_for_review")
+        self.assertTrue(field_draft["mapping_complete"])
+        self.assertEqual(field_draft["amounts"]["29"], "1000")
+        self.assertEqual(field_draft["amounts"]["26"], "300")
+        self.assertEqual(field_draft["amounts"]["32a"], "100")
+        self.assertEqual(field_draft["amounts"]["32b"], "10")
+        self.assertEqual(field_draft["amounts"]["34a"], "70")
+        self.assertEqual(field_draft["amounts"]["27"], "1790")
+        self.assertEqual(field_draft["amounts"]["28"], "45")
+        self.assertEqual(field_draft["amounts"]["34"], "2160")
+        self.assertIsNone(field_draft["amounts"]["25"])
+        self.assertEqual(field_draft["independent_check"]["status"], "pass")
+        self.assertFalse(draft["legal_form"]["submission_ready"])
+        self.assertFalse(draft["legal_form"]["auto_form_selection"])
+
+    def test_form_line_is_never_inferred_from_tax_rate(self) -> None:
+        source = self.root / "unmapped-zero-rate.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status\n"
+            "2026-08-01,0100000001,0300000001,S1,1,1000,0%,0,1000,Bình thường\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-08",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "89/2026/TT-BTC"
+            ),
+        )
+        self.assertEqual(draft["draft_status"], "draft_ready_partial_form")
+        self.assertEqual(draft["form_field_draft"]["unmapped_sales_rows"], [2])
+        self.assertNotIn("29", draft["form_field_draft"]["amounts"])
+        self.assertEqual(
+            draft["form_field_draft"]["findings"][0]["code"],
+            "sales_form_line_mapping_missing",
+        )
+
+    def test_form_line_from_new_version_is_rejected_for_tt80(self) -> None:
+        source = self.root / "tt80-invalid-line.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code\n"
+            "2026-05-01,0100000001,0300000001,S1,1,100,không thuộc phạm vi,0,100,Bình thường,34a\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q2",
+            form_version="80/2021/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "80/2021/TT-BTC"
+            ),
+        )
+        self.assertEqual(draft["draft_status"], "blocked_review_required")
+        self.assertEqual(
+            draft["form_field_draft"]["mapping_status"], "blocked_invalid_line"
+        )
+        self.assertIn(
+            "sales_form_line_not_in_selected_version",
+            [item["code"] for item in draft["findings"]],
+        )
+
+    def test_form_draft_is_blocked_without_law_watch_report(self) -> None:
+        source = self.root / "without-law-watch.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code\n"
+            "2026-08-01,0100000001,0300000001,S1,1,100,5%,5,105,Bình thường,30\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+        )
+        self.assertEqual(draft["draft_status"], "blocked_review_required")
+        self.assertEqual(
+            draft["form_field_draft"]["mapping_status"], "blocked_legal_review"
+        )
+        self.assertEqual(
+            draft["legal_form"]["law_watch_review"]["reason"],
+            "law_watch_report_required_for_form_draft",
+        )
+
+    def test_form_draft_is_blocked_when_law_watch_has_new_proposals(self) -> None:
+        source = self.root / "proposal-pending.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0100000001,0300000001,S1,1,100,5%,5,105,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        report_path = write_law_watch_report(
+            self.root / "law-watch-proposal.json", "89/2026/TT-BTC"
+        )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["proposals"] = [{"citation": "999/2099/TT-BTC"}]
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=report_path,
+        )
+        self.assertEqual(draft["draft_status"], "blocked_review_required")
+        self.assertIn(
+            "new_legal_proposals_require_review",
+            draft["legal_form"]["law_watch_review"]["reason_codes"],
+        )
+        self.assertEqual(
+            draft["form_field_draft"]["mapping_status"], "blocked_legal_review"
+        )
+
+    def test_form_draft_requires_confirmation_when_sales_are_absent(self) -> None:
+        source = self.root / "purchases-only.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0300000001,0100000001,S1,1,100,5%,5,105,Bình thường,23,24\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "89/2026/TT-BTC"
+            ),
+        )
+        field_draft = draft["form_field_draft"]
+        self.assertFalse(field_draft["mapping_complete"])
+        self.assertEqual(field_draft["amounts"]["23"], "100")
+        self.assertEqual(field_draft["amounts"]["23a"], "0")
+        self.assertEqual(field_draft["amounts"]["24"], "5")
+        self.assertEqual(field_draft["amounts"]["24a"], "0")
+        self.assertNotIn("23a", field_draft["external_inputs_not_provided"])
+        self.assertIn(
+            "no_sales_records_for_form_mapping_requires_confirmation",
+            [item["code"] for item in field_draft["findings"]],
+        )
+
+    def test_purchase_fields_sum_import_subset_into_form_totals(self) -> None:
+        source = self.root / "domestic-and-import-purchases.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0300000001,0100000001,D1,1,1000,5%,50,1050,Bình thường,23,24\n"
+            "2026-08-02,0300000002,0100000001,I1,2,2000,10%,200,2200,Bình thường,23a,24a\n"
+            "2026-08-03,0100000001,0400000001,S1,3,500,5%,25,525,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "89/2026/TT-BTC"
+            ),
+        )
+
+        fields = draft["form_field_draft"]
+        self.assertTrue(fields["mapping_complete"])
+        self.assertEqual(fields["amounts"]["23"], "3000")
+        self.assertEqual(fields["amounts"]["23a"], "2000")
+        self.assertEqual(fields["amounts"]["24"], "250")
+        self.assertEqual(fields["amounts"]["24a"], "200")
+        self.assertEqual(fields["independent_check"]["status"], "pass")
+
+    def test_tt80_purchase_fields_keep_import_subset_in_parent_totals(self) -> None:
+        source = self.root / "tt80-purchases.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2025-05-01,0300000001,0100000001,D1,1,400,5%,20,420,Bình thường,23,24\n"
+            "2025-05-02,0300000002,0100000001,I1,2,600,10%,60,660,Bình thường,23a,24a\n"
+            "2025-05-03,0100000001,0400000001,S1,3,500,5%,25,525,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2025-Q2",
+            form_version="80/2021/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-tt80.json", "80/2021/TT-BTC"
+            ),
+        )
+
+        fields = draft["form_field_draft"]
+        self.assertTrue(fields["mapping_complete"])
+        self.assertEqual(fields["amounts"]["23"], "1000")
+        self.assertEqual(fields["amounts"]["23a"], "600")
+        self.assertEqual(fields["amounts"]["24"], "80")
+        self.assertEqual(fields["amounts"]["24a"], "60")
+        self.assertEqual(fields["independent_check"]["status"], "pass")
+
+    def test_purchase_field_without_explicit_mapping_is_not_inferred(self) -> None:
+        source = self.root / "unmapped-purchase.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0300000001,0100000001,P1,1,1000,5%,50,1050,Bình thường,,\n"
+            "2026-08-02,0100000001,0400000001,S1,2,500,5%,25,525,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "89/2026/TT-BTC"
+            ),
+        )
+
+        fields = draft["form_field_draft"]
+        self.assertFalse(fields["mapping_complete"])
+        self.assertEqual(fields["unmapped_purchase_rows"], [2])
+        self.assertEqual(fields["amounts"]["23"], "0")
+        self.assertEqual(fields["amounts"]["24"], "0")
+        self.assertIn(
+            "purchase_form_line_mapping_missing",
+            [item["code"] for item in fields["findings"]],
+        )
+        self.assertEqual(fields["independent_check"]["status"], "review_required")
+
+    def test_purchase_tax_mapping_must_match_import_subset(self) -> None:
+        source = self.root / "mismatched-purchase-tax-line.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0300000001,0100000001,I1,1,1000,5%,50,1050,Bình thường,23a,24\n"
+            "2026-08-02,0100000001,0400000001,S1,2,500,5%,25,525,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=write_law_watch_report(
+                self.root / "law-watch-report.json", "89/2026/TT-BTC"
+            ),
+        )
+
+        fields = draft["form_field_draft"]
+        self.assertEqual(fields["mapping_status"], "blocked_invalid_line")
+        self.assertIn(
+            "purchase_form_tax_line_mismatch",
+            [item["code"] for item in fields["findings"]],
+        )
+        self.assertEqual(fields["independent_check"]["status"], "review_required")
+
+    def test_malformed_law_watch_listing_count_blocks_form_draft(self) -> None:
+        report_path = write_law_watch_report(
+            self.root / "malformed-listing-count.json", "89/2026/TT-BTC"
+        )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["listing_entries"] = "not-a-count"
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        source = self.root / "valid-tt89.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0100000001,0300000001,S1,1,100,5%,5,105,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=report_path,
+        )
+        self.assertEqual(draft["legal_form"]["law_watch_review"]["status"], "blocked")
+        self.assertIn(
+            "official_listing_not_accessed",
+            draft["legal_form"]["law_watch_review"]["reason_codes"],
+        )
+
+    def test_vat_roles_are_unique_and_bound_to_existing_tools(self) -> None:
+        roles_path = Path(__file__).resolve().parents[1] / "roles.json"
+        roles_data = json.loads(roles_path.read_text(encoding="utf-8"))
+        roles = roles_data["roles"]
+        identifiers = [role["role_id"] for role in roles]
+        self.assertEqual(len(identifiers), len(set(identifiers)))
+        self.assertEqual(
+            set(identifiers),
+            {
+                "HD01",
+                "HD02",
+                "HD03",
+                "HD04",
+                "TK01",
+                "TK05",
+                "BM01",
+                "BM02",
+                "BM03",
+                "PL01",
+                "PL02",
+                "PL03",
+                "PL04",
+                "KTT03",
+            },
+        )
+        self.assertEqual(roles_data["agent_registration"], "none")
+        self.assertTrue(all(role.get("implementation_status") for role in roles))
+        self.assertIn(
+            "reuses_existing_skill_report_required",
+            next(role for role in roles if role["role_id"] == "PL01")[
+                "implementation_status"
+            ],
         )
 
 

@@ -1,21 +1,22 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "source_catalog": "DANH_MUC_BOT.md",
-  "agent_registration": "none; these are task-role references only",
+  "execution_model": "one Eigent Skill pipeline; role IDs are stage assignments, not separately registered Agents",
+  "agent_registration": "none",
   "roles": [
-    {"role_id": "HD01", "stage": "import", "responsibility": "Read supported invoice workbook rows and preserve source identifiers."},
-    {"role_id": "HD02", "stage": "classify", "responsibility": "Review purchase invoices using taxpayer and seller tax IDs."},
-    {"role_id": "HD03", "stage": "classify", "responsibility": "Review sales invoices using taxpayer and seller tax IDs."},
-    {"role_id": "HD04", "stage": "validate", "responsibility": "Hold duplicates, adjustments, replacements, cancellations, amount errors, and out-of-period records."},
-    {"role_id": "TK01", "stage": "aggregate", "responsibility": "Aggregate draft invoice bases and tax amounts without legal eligibility conclusions."},
-    {"role_id": "TK05", "stage": "independent_check", "responsibility": "Recompute totals and inspect template and export status."},
-    {"role_id": "BM01", "stage": "template_review", "responsibility": "Analyze official form and attachment structure after source verification."},
-    {"role_id": "BM02", "stage": "template_review", "responsibility": "Prepare a blank copy from the verified official source."},
-    {"role_id": "BM03", "stage": "template_review", "responsibility": "Apply only a reviewed field map to a copy; disabled until mapping is verified."},
-    {"role_id": "PL01", "stage": "legal_review", "responsibility": "Collect official legal texts and form attachments through accounting-law-watch."},
-    {"role_id": "PL02", "stage": "legal_review", "responsibility": "Review legal scope, effective dates, and tax period applicability."},
-    {"role_id": "PL03", "stage": "legal_review", "responsibility": "Compare amendments and identify affected VAT workflow steps."},
-    {"role_id": "PL04", "stage": "legal_review", "responsibility": "Prepare a proposal for the existing law-watch registry and related Skills."},
-    {"role_id": "KTT03", "stage": "approval", "responsibility": "Summarize exceptions and present the draft for user approval."}
+    {"role_id": "HD01", "stage": "import", "tool": "read_invoice_rows", "implementation_status": "implemented_xlsx_csv"},
+    {"role_id": "HD02", "stage": "classify_purchases", "tool": "_invoice_records", "implementation_status": "implemented_by_tax_id"},
+    {"role_id": "HD03", "stage": "classify_sales", "tool": "_invoice_records", "implementation_status": "implemented_by_tax_id"},
+    {"role_id": "HD04", "stage": "validate", "tool": "_invoice_records", "implementation_status": "implemented_with_hold_findings"},
+    {"role_id": "TK01", "stage": "aggregate", "tool": "_aggregate_and_form_field_draft", "implementation_status": "implemented_review_only"},
+    {"role_id": "TK05", "stage": "independent_check", "tool": "_independent_check_and_form_check", "implementation_status": "implemented"},
+    {"role_id": "BM01", "stage": "template_review", "tool": "legal/form_catalog.json", "implementation_status": "source_inventory_verified_mapping_review_required"},
+    {"role_id": "BM02", "stage": "template_copy", "tool": null, "implementation_status": "NOT_STARTED_official_xlsx_copy"},
+    {"role_id": "BM03", "stage": "field_mapping_and_export", "tool": "form_field_draft_and_write_draft", "implementation_status": "implemented_json_only_no_official_xlsx"},
+    {"role_id": "PL01", "stage": "collect_law", "tool": "accounting-law-watch", "implementation_status": "reuses_existing_skill_report_required"},
+    {"role_id": "PL02", "stage": "effective_date_and_scope", "tool": "accounting-law-watch_report_review", "implementation_status": "human_review_required"},
+    {"role_id": "PL03", "stage": "compare_amendments", "tool": "accounting-law-watch_registry_and_form_catalog", "implementation_status": "known_chain_reviewed_period_scope_human_review_required"},
+    {"role_id": "PL04", "stage": "propose_skill_updates", "tool": "accounting-law-watch_proposal_only", "implementation_status": "no_auto_apply"},
+    {"role_id": "KTT03", "stage": "approval", "tool": "workflow_findings_and_status", "implementation_status": "human_approval_required_no_auto_submit"}
   ]
 }

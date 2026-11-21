@@ -196,12 +196,13 @@ class OfficialLawWatchTests(unittest.TestCase):
                 "vanban_tt40_2025_tt80_form_update",
                 "vanban_tt94_2025_tt80_update",
                 "vanban_tt21_2026_tt80_update",
-                "mof_official_answer_tt80_01_gtgt",
                 "mof_vbpq_official_database_guide",
                 "vanban_tt89_2026",
                 "congbao_correction_2551_2026",
             }.issubset(names)
         )
+        self.assertNotIn("mof_official_answer_tt80_01_gtgt", names)
+        self.assertNotIn("mof_question_reference_tt89_form_only", names)
         documents = {item["citation"]: item for item in data["known_documents"]}
         self.assertEqual(documents["48/2024/QH15"]["effective_from"], "2025-07-01")
         self.assertEqual(documents["181/2025/NĐ-CP"]["effective_from"], "2025-07-01")

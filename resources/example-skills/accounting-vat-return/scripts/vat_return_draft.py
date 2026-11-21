@@ -89,6 +89,18 @@ FIELD_ALIASES: dict[str, set[str]] = {
     },
     "status": {"status", "invoice_status", "trang_thai", "tinh_trang_hoa_don"},
     "declared_direction": {"direction", "loai_hoa_don", "mua_vao_ban_ra"},
+    "form_line_code": {
+        "form_line_code",
+        "tax_return_line_code",
+        "chi_tieu_doanh_thu",
+        "ma_chi_tieu_doanh_thu",
+    },
+    "form_tax_line_code": {
+        "form_tax_line_code",
+        "tax_return_tax_line_code",
+        "chi_tieu_thue",
+        "ma_chi_tieu_thue",
+    },
 }
 ALIAS_TO_FIELD = {
     alias: field for field, aliases in FIELD_ALIASES.items() for alias in aliases
@@ -126,6 +138,33 @@ NORMAL_STATUS = {
     "goc",
     "binh_thuong",
     "hop_le",
+}
+FORM_CATALOG_PATH = Path(__file__).resolve().parents[1] / "legal" / "form_catalog.json"
+FORM_REVENUE_FIELDS = {
+    "80/2021/TT-BTC": {"26", "29", "30", "32", "32a"},
+    "89/2026/TT-BTC": {"26", "29", "30", "32", "32a", "32b", "34a"},
+}
+FORM_TAX_FIELDS = {"31", "33"}
+FORM_PURCHASE_VALUE_FIELDS = {"23", "23a"}
+FORM_PURCHASE_TAX_FIELDS = {"24", "24a"}
+PURCHASE_TAX_LINE_BY_VALUE = {"23": "24", "23a": "24a"}
+LAW_WATCH_REQUIRED_SOURCES = {
+    "80/2021/TT-BTC": {
+        "congbao_tt80_2021",
+        "vanban_tt40_2025_tt80_form_update",
+        "vanban_tt94_2025_tt80_update",
+        "vanban_tt21_2026_tt80_update",
+    },
+    "89/2026/TT-BTC": {
+        "vanban_law_vat_48_2024",
+        "vanban_decree_vat_181_2025",
+        "vanban_circular_vat_69_2025",
+        "vanban_tt89_2026",
+        "vanban_tt40_2025_tt80_form_update",
+        "vanban_tt94_2025_tt80_update",
+        "vanban_tt21_2026_tt80_update",
+        "congbao_correction_2551_2026",
+    },
 }
 
 
@@ -468,6 +507,435 @@ def normalize_tax_id(value: str) -> str:
     return value.strip().upper()
 
 
+def normalize_form_line_code(value: str) -> str:
+    cleaned = value.strip().casefold().strip("[]")
+    return cleaned if re.fullmatch(r"\d{1,2}[a-z]?", cleaned) else ""
+
+
+def _form_version_spec(version: str) -> dict[str, Any]:
+    try:
+        catalog = json.loads(FORM_CATALOG_PATH.read_text(encoding="utf-8"))
+        versions = catalog["filing_form"]["versions"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise VatDraftError(
+            "Không đọc được danh mục phiên bản mẫu GTGT đã xác minh."
+        ) from exc
+    for candidate in versions:
+        if candidate.get("instrument") == version:
+            return candidate
+    raise VatDraftError(f"Phiên bản mẫu GTGT chưa có trong danh mục: {version}.")
+
+
+def _review_law_watch_report(
+    report_path: str | Path | None, version: str
+) -> dict[str, Any]:
+    if report_path is None:
+        return {
+            "status": "blocked",
+            "reason": "law_watch_report_required_for_form_draft",
+            "missing_sources": sorted(LAW_WATCH_REQUIRED_SOURCES[version]),
+        }
+    try:
+        report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "status": "blocked",
+            "reason": f"law_watch_report_unreadable:{type(exc).__name__}",
+            "missing_sources": sorted(LAW_WATCH_REQUIRED_SOURCES[version]),
+        }
+    if not isinstance(report, dict):
+        report = {}
+    checks = report.get("official_reference_checks", [])
+    status_by_source = (
+        {
+            str(item.get("name")): str(item.get("status"))
+            for item in checks
+            if isinstance(item, dict)
+        }
+        if isinstance(checks, list)
+        else {}
+    )
+    required = LAW_WATCH_REQUIRED_SOURCES[version]
+    not_verified = sorted(
+        source for source in required if status_by_source.get(source) != "pass"
+    )
+    proposals = report.get("proposals")
+    if not isinstance(proposals, list):
+        proposals = ["invalid_proposal_list"]
+    reasons: list[str] = []
+    try:
+        listing_entries = int(report.get("listing_entries", 0) or 0)
+    except (TypeError, ValueError):
+        listing_entries = 0
+    if report.get("source_accessed") is not True or listing_entries < 1:
+        reasons.append("official_listing_not_accessed")
+    if report.get("approved_period_metadata_unchanged") is not True:
+        reasons.append("approved_period_metadata_not_confirmed_unchanged")
+    if report.get("auto_applied") is not False:
+        reasons.append("law_watch_auto_apply_state_not_safe")
+    if proposals:
+        reasons.append("new_legal_proposals_require_review")
+    if not_verified:
+        reasons.append("required_official_references_not_verified")
+    return {
+        "status": "pass" if not reasons else "blocked",
+        "checked_at": report.get("checked_at"),
+        "reason_codes": reasons,
+        "unverified_sources": not_verified,
+        "proposal_count": len(proposals),
+        "source_accessed": report.get("source_accessed") is True,
+        "auto_applied": report.get("auto_applied"),
+    }
+
+
+def _evaluate_form_formula(
+    expression: str, values: dict[str, Decimal | None]
+) -> Decimal | None:
+    if not re.fullmatch(r"\s*\d{1,2}[a-z]?(?:\s*[+-]\s*\d{1,2}[a-z]?)*\s*", expression):
+        raise VatDraftError(f"Công thức biểu mẫu không được hỗ trợ: {expression}")
+    pieces = list(re.finditer(r"([+-]?)\s*(\d{1,2}[a-z]?)", expression))
+    if not pieces:
+        raise VatDraftError(f"Công thức biểu mẫu rỗng hoặc không hợp lệ: {expression}")
+    total = Decimal(0)
+    for index, piece in enumerate(pieces):
+        line_code = piece.group(2)
+        amount = values.get(line_code)
+        if amount is None:
+            return None
+        sign = piece.group(1)
+        total += amount if index == 0 or sign != "-" else -amount
+    return total
+
+
+def _form_field_draft(
+    records: list[dict[str, Any]], version: str | None
+) -> dict[str, Any] | None:
+    if version is None:
+        return None
+    spec = _form_version_spec(version)
+    allowed_revenue = FORM_REVENUE_FIELDS.get(version)
+    if allowed_revenue is None:
+        raise VatDraftError(f"Chưa hỗ trợ ánh xạ nháp cho mẫu {version}.")
+
+    values: dict[str, Decimal | None] = {
+        "23": Decimal(0),
+        "23a": Decimal(0),
+        "24": Decimal(0),
+        "24a": Decimal(0),
+        "25": None,
+        "22": None,
+        "37": None,
+        "38": None,
+        "39a": None,
+        "40b": None,
+        "42": None,
+    }
+    findings: list[dict[str, Any]] = []
+    unmapped_rows: list[int] = []
+    unmapped_purchase_rows: list[int] = []
+    complete = True
+    if not any(
+        row["eligible_for_draft_totals"] and row["direction"] == "sales"
+        for row in records
+    ):
+        complete = False
+        findings.append(
+            {
+                "severity": "review",
+                "code": "no_sales_records_for_form_mapping_requires_confirmation",
+            }
+        )
+
+    for record in records:
+        if not record["eligible_for_draft_totals"]:
+            continue
+        if record["direction"] == "purchases":
+            value_code = record.get("form_line_code", "")
+            tax_code = record.get("form_tax_line_code", "")
+            if not value_code:
+                complete = False
+                unmapped_purchase_rows.append(record["source_row"])
+                findings.append(
+                    {
+                        "severity": "review",
+                        "code": "purchase_form_line_mapping_missing",
+                        "source_row": record["source_row"],
+                    }
+                )
+                continue
+            if value_code not in FORM_PURCHASE_VALUE_FIELDS:
+                complete = False
+                findings.append(
+                    {
+                        "severity": "block",
+                        "code": "purchase_form_line_not_supported",
+                        "source_row": record["source_row"],
+                        "line_code": value_code,
+                    }
+                )
+                continue
+
+            net_amount = Decimal(record["net_amount"])
+            tax_amount = Decimal(record["tax_amount"])
+            values["23"] += net_amount
+            if value_code == "23a":
+                values["23a"] = (values["23a"] or Decimal(0)) + net_amount
+
+            expected_tax_code = PURCHASE_TAX_LINE_BY_VALUE[value_code]
+            if tax_amount and not tax_code:
+                complete = False
+                findings.append(
+                    {
+                        "severity": "review",
+                        "code": "purchase_form_tax_line_mapping_missing",
+                        "source_row": record["source_row"],
+                    }
+                )
+                continue
+            if tax_code and tax_code not in FORM_PURCHASE_TAX_FIELDS:
+                complete = False
+                findings.append(
+                    {
+                        "severity": "block",
+                        "code": "purchase_form_tax_line_not_supported",
+                        "source_row": record["source_row"],
+                        "line_code": tax_code,
+                    }
+                )
+                continue
+            if tax_code and tax_code != expected_tax_code:
+                complete = False
+                findings.append(
+                    {
+                        "severity": "block",
+                        "code": "purchase_form_tax_line_mismatch",
+                        "source_row": record["source_row"],
+                        "value_line_code": value_code,
+                        "tax_line_code": tax_code,
+                        "expected_tax_line_code": expected_tax_code,
+                    }
+                )
+                continue
+
+            values["24"] += tax_amount
+            if value_code == "23a":
+                values["24a"] = (values["24a"] or Decimal(0)) + tax_amount
+            continue
+        if record["direction"] != "sales":
+            continue
+
+        revenue_code = record.get("form_line_code", "")
+        tax_code = record.get("form_tax_line_code", "")
+        if not revenue_code:
+            complete = False
+            unmapped_rows.append(record["source_row"])
+            findings.append(
+                {
+                    "severity": "review",
+                    "code": "sales_form_line_mapping_missing",
+                    "source_row": record["source_row"],
+                }
+            )
+        elif revenue_code not in allowed_revenue:
+            complete = False
+            findings.append(
+                {
+                    "severity": "block",
+                    "code": "sales_form_line_not_in_selected_version",
+                    "source_row": record["source_row"],
+                    "line_code": revenue_code,
+                }
+            )
+        else:
+            values[revenue_code] = (values.get(revenue_code) or Decimal(0)) + Decimal(
+                record["net_amount"]
+            )
+
+        tax_amount = Decimal(record["tax_amount"])
+        if tax_amount and not tax_code:
+            complete = False
+            findings.append(
+                {
+                    "severity": "review",
+                    "code": "sales_form_tax_line_mapping_missing",
+                    "source_row": record["source_row"],
+                }
+            )
+        elif tax_code and tax_code not in FORM_TAX_FIELDS:
+            complete = False
+            findings.append(
+                {
+                    "severity": "block",
+                    "code": "sales_form_tax_line_not_supported",
+                    "source_row": record["source_row"],
+                    "line_code": tax_code,
+                }
+            )
+        elif tax_code:
+            values[tax_code] = (values.get(tax_code) or Decimal(0)) + tax_amount
+
+    if complete:
+        for line_code in (
+            allowed_revenue
+            | FORM_TAX_FIELDS
+            | FORM_PURCHASE_VALUE_FIELDS
+            | FORM_PURCHASE_TAX_FIELDS
+        ):
+            values.setdefault(line_code, Decimal(0))
+
+    for line_code, expression in spec["verified_form_formulas"].items():
+        values[line_code] = _evaluate_form_formula(expression, values)
+
+    rendered_values = {
+        code: money_text(amount) if amount is not None else None
+        for code, amount in sorted(values.items())
+    }
+    blocked = any(item["severity"] == "block" for item in findings)
+    return {
+        "form_number": "01/GTGT",
+        "version": version,
+        "mapping_status": "blocked_invalid_line" if blocked else "review_required",
+        "mapping_complete": complete and not blocked,
+        "selected_by": "explicit_cli_selection",
+        "line_mapping_source": "explicit source columns; no tax-rate inference",
+        "amounts": rendered_values,
+        "unmapped_sales_rows": sorted(unmapped_rows),
+        "unmapped_purchase_rows": sorted(unmapped_purchase_rows),
+        "findings": findings,
+        "external_inputs_not_provided": [
+            "22",
+            "25",
+            "37",
+            "38",
+            "39a",
+            "40b",
+            "42",
+        ],
+        "submission_ready": False,
+        "output_type": "internal_json_draft_only",
+    }
+
+
+def _independent_form_check(
+    records: list[dict[str, Any]], version: str, primary: dict[str, Any]
+) -> dict[str, Any]:
+    """Recompute mapped form fields in a separate pass over eligible invoice rows."""
+    fields = FORM_REVENUE_FIELDS[version]
+    if not any(
+        row["eligible_for_draft_totals"] is True and row["direction"] == "sales"
+        for row in records
+    ):
+        return {
+            "status": "review_required",
+            "reason": "sales records are absent; form mapping needs confirmation",
+        }
+    recomputed: dict[str, Decimal | None] = {
+        "23": Decimal(0),
+        "23a": Decimal(0),
+        "24": Decimal(0),
+        "24a": Decimal(0),
+        "25": None,
+        "22": None,
+        "37": None,
+        "38": None,
+        "39a": None,
+        "40b": None,
+        "42": None,
+    }
+    for row in records:
+        if row["eligible_for_draft_totals"] is not True:
+            continue
+        if row["direction"] == "purchases":
+            value_code = row.get("form_line_code", "")
+            tax_code = row.get("form_tax_line_code", "")
+            if value_code not in FORM_PURCHASE_VALUE_FIELDS:
+                return {
+                    "status": "review_required",
+                    "reason": "purchase value line is unmapped or unsupported",
+                }
+            expected_tax_code = PURCHASE_TAX_LINE_BY_VALUE[value_code]
+            tax_amount = Decimal(str(row["tax_amount"]))
+            if tax_amount and tax_code != expected_tax_code:
+                return {
+                    "status": "review_required",
+                    "reason": "purchase tax line is unmapped or mismatched",
+                }
+            if tax_code and tax_code != expected_tax_code:
+                return {
+                    "status": "review_required",
+                    "reason": "purchase tax line is mismatched",
+                }
+
+            net_amount = Decimal(str(row["net_amount"]))
+            recomputed["23"] = Decimal(str(recomputed["23"])) + net_amount
+            if value_code == "23a":
+                recomputed["23a"] = Decimal(str(recomputed["23a"])) + net_amount
+            recomputed["24"] = Decimal(str(recomputed["24"])) + tax_amount
+            if value_code == "23a":
+                recomputed["24a"] = Decimal(str(recomputed["24a"])) + tax_amount
+        elif row["direction"] == "sales":
+            revenue_code = row.get("form_line_code", "")
+            tax_code = row.get("form_tax_line_code", "")
+            if revenue_code not in fields:
+                return {"status": "review_required", "reason": "sales line is unmapped"}
+            recomputed[revenue_code] = Decimal(
+                str(recomputed.get(revenue_code) or Decimal(0))
+            ) + Decimal(str(row["net_amount"]))
+            if Decimal(str(row["tax_amount"])):
+                if tax_code not in FORM_TAX_FIELDS:
+                    return {
+                        "status": "review_required",
+                        "reason": "sales tax line is unmapped",
+                    }
+                recomputed[tax_code] = Decimal(
+                    str(recomputed.get(tax_code) or Decimal(0))
+                ) + Decimal(str(row["tax_amount"]))
+            elif tax_code:
+                if tax_code not in FORM_TAX_FIELDS:
+                    return {
+                        "status": "review_required",
+                        "reason": "sales tax line is invalid",
+                    }
+                recomputed[tax_code] = Decimal(
+                    str(recomputed.get(tax_code) or Decimal(0))
+                )
+
+    for code in (
+        fields | FORM_TAX_FIELDS | FORM_PURCHASE_VALUE_FIELDS | FORM_PURCHASE_TAX_FIELDS
+    ):
+        recomputed.setdefault(code, Decimal(0))
+
+    formulas = _form_version_spec(version)["verified_form_formulas"]
+    for code, expression in formulas.items():
+        pieces = re.split(r"\s*([+-])\s*", expression.strip())
+        if not pieces or len(pieces) % 2 == 0:
+            return {"status": "fail", "reason": "unsupported official formula"}
+        current = recomputed.get(pieces[0])
+        if current is None:
+            recomputed[code] = None
+            continue
+        result = current
+        for offset in range(1, len(pieces), 2):
+            operand = recomputed.get(pieces[offset + 1])
+            if operand is None:
+                result = None
+                break
+            result = result + operand if pieces[offset] == "+" else result - operand
+        recomputed[code] = result
+
+    rendered = {
+        code: money_text(amount) if amount is not None else None
+        for code, amount in sorted(recomputed.items())
+    }
+    matches = rendered == primary["amounts"]
+    return {
+        "status": "pass" if matches else "fail",
+        "totals_match": matches,
+        "recomputed_amounts": rendered,
+        "method": "separate pass over source invoice rows and catalog formulas",
+    }
+
+
 def _canonical_raw(raw: dict[str, Any]) -> dict[str, str]:
     values: dict[str, str] = {}
     for label, value in raw.items():
@@ -541,6 +1009,10 @@ def _invoice_records(
             if amounts["net_amount"] is not None
             else None,
             "tax_rate_label": data.get("tax_rate", ""),
+            "form_line_code": normalize_form_line_code(data.get("form_line_code", "")),
+            "form_tax_line_code": normalize_form_line_code(
+                data.get("form_tax_line_code", "")
+            ),
             "tax_amount": money_text(amounts["tax_amount"])
             if amounts["tax_amount"] is not None
             else None,
@@ -757,6 +1229,8 @@ def build_draft(
     *,
     sheet_name: str | None = None,
     header_row: int | None = None,
+    form_version: str | None = None,
+    law_watch_report: str | Path | None = None,
 ) -> dict[str, Any]:
     source = Path(input_path)
     if not source.is_file():
@@ -766,6 +1240,33 @@ def build_draft(
         raise VatDraftError("Cần MST người nộp thuế để phân loại mua vào/bán ra.")
     imported = read_invoice_rows(source, sheet_name, header_row)
     records, findings = _invoice_records(imported, taxpayer_tax_id, start, end)
+    law_watch_review = (
+        _review_law_watch_report(law_watch_report, form_version)
+        if form_version
+        else None
+    )
+    if form_version and law_watch_review and law_watch_review["status"] != "pass":
+        form_field_draft = {
+            "form_number": "01/GTGT",
+            "version": form_version,
+            "mapping_status": "blocked_legal_review",
+            "mapping_complete": False,
+            "amounts": {},
+            "unmapped_sales_rows": [],
+            "findings": [
+                {
+                    "severity": "block",
+                    "code": "law_watch_review_not_passed",
+                    "details": law_watch_review,
+                }
+            ],
+            "submission_ready": False,
+            "output_type": "internal_json_draft_only",
+        }
+    else:
+        form_field_draft = _form_field_draft(records, form_version)
+    if form_field_draft:
+        findings.extend(form_field_draft["findings"])
     if imported and not any(record["eligible_for_draft_totals"] for record in records):
         findings.append(
             {"severity": "block", "code": "no_eligible_invoices_in_selected_period"}
@@ -774,12 +1275,32 @@ def build_draft(
     independent = _independent_check(records, totals)
     if not independent["totals_match"]:
         findings.append({"severity": "block", "code": "independent_check_failed"})
+    if form_field_draft and form_field_draft["mapping_complete"]:
+        independent_form = _independent_form_check(
+            records, form_version, form_field_draft
+        )
+        form_field_draft["independent_check"] = independent_form
+        if independent_form["status"] == "fail":
+            findings.append(
+                {"severity": "block", "code": "independent_form_check_failed"}
+            )
+    elif form_field_draft:
+        form_field_draft["independent_check"] = {
+            "status": "review_required",
+            "reason": "form mapping is incomplete or contains invalid lines",
+        }
     blocking = [item for item in findings if item["severity"] == "block"]
+    if blocking:
+        draft_status = "blocked_review_required"
+    elif not form_field_draft:
+        draft_status = "draft_ready_unmapped"
+    elif form_field_draft["mapping_complete"]:
+        draft_status = "draft_ready_for_review"
+    else:
+        draft_status = "draft_ready_partial_form"
     return {
         "tool": "accounting-vat-return-draft",
-        "draft_status": "blocked_review_required"
-        if blocking
-        else "draft_ready_unmapped",
+        "draft_status": draft_status,
         "source_file": source.name,
         "input_format": source.suffix.casefold().lstrip("."),
         "taxpayer_tax_id": taxpayer_tax_id.strip(),
@@ -791,33 +1312,79 @@ def build_draft(
             "filter_basis": "invoice_date_only; manual period and legal treatment review required",
         },
         "workflow": [
-            {"step": "import", "status": "completed", "records_read": len(imported)},
+            {
+                "step": "import",
+                "owner_roles": ["HD01"],
+                "status": "completed",
+                "records_read": len(imported),
+            },
             {
                 "step": "classify",
+                "owner_roles": ["HD02", "HD03"],
                 "status": "completed_with_review" if blocking else "completed",
                 "rules": "party tax ID; never match by name",
             },
             {
                 "step": "validate",
+                "owner_roles": ["HD04"],
                 "status": "review_required" if findings else "passed",
                 "finding_count": len(findings),
             },
             {
+                "step": "legal_review",
+                "owner_roles": ["PL01", "PL02", "PL03", "PL04"],
+                "reuses_skill": "accounting-law-watch",
+                "status": law_watch_review["status"]
+                if law_watch_review
+                else "not_run; required before selecting a form version",
+            },
+            {
                 "step": "aggregate",
+                "owner_roles": ["TK01"],
                 "status": "completed",
                 "eligible_invoice_count": sum(
                     record["eligible_for_draft_totals"] for record in records
                 ),
             },
-            {"step": "prepare_draft", "status": "prepared_not_official_form"},
-            {"step": "independent_check", "status": independent["status"]},
-            {"step": "export", "status": "JSON_draft_only"},
+            {
+                "step": "prepare_draft",
+                "owner_roles": ["BM01", "BM03"],
+                "status": "prepared_for_review"
+                if form_field_draft and form_field_draft["mapping_complete"]
+                else "partial_or_unmapped",
+            },
+            {
+                "step": "official_template_copy",
+                "owner_roles": ["BM02"],
+                "status": "NOT_STARTED",
+            },
+            {
+                "step": "independent_check",
+                "owner_roles": ["TK05"],
+                "status": form_field_draft["independent_check"]["status"]
+                if form_field_draft
+                else independent["status"],
+            },
+            {
+                "step": "export",
+                "owner_roles": ["BM03"],
+                "status": "JSON_form_field_draft_only"
+                if form_field_draft
+                else "JSON_draft_only",
+            },
+            {
+                "step": "approval",
+                "owner_roles": ["KTT03"],
+                "status": "human_approval_required",
+            },
         ],
         "legal_form": {
-            "form_number": None,
+            "form_number": "01/GTGT" if form_field_draft else None,
             "candidate_form_number": "01/GTGT",
-            "version": None,
-            "status": "OFFICIAL_FORM_SOURCE_VERIFIED; PERIOD_AND_FIELD_EXPORT_MAPPING_REQUIRE_REVIEW",
+            "version": form_version,
+            "status": "EXPLICIT_VERSION_SELECTED; HUMAN_PERIOD_AND_TAXPAYER_REVIEW_REQUIRED"
+            if form_version
+            else "OFFICIAL_FORM_SOURCE_VERIFIED; PERIOD_AND_FIELD_EXPORT_MAPPING_REQUIRE_REVIEW",
             "verified_versions": [
                 {
                     "instrument": "80/2021/TT-BTC",
@@ -834,12 +1401,18 @@ def build_draft(
                 },
             ],
             "auto_form_selection": False,
+            "selected_version_by": "user_cli_option" if form_version else None,
+            "law_watch_review": law_watch_review,
+            "field_mapping_status": form_field_draft["mapping_status"]
+            if form_field_draft
+            else "NOT_STARTED",
             "xml_export": "NOT_STARTED_SCHEMA_NOT_VERIFIED",
             "submission_ready": False,
-            "note": "Nguồn biểu mẫu chính thức đã được xác định; chưa bật ánh xạ xuất Excel, lựa chọn phiên bản hoặc lập XML trước khi hoàn thành rà soát kỳ áp dụng, trường dữ liệu, phụ lục và schema.",
+            "note": "Tờ khai JSON chỉ là bản nháp nội bộ. Mẫu được chọn tường minh qua CLI; người dùng vẫn phải xác nhận kỳ áp dụng, phân loại từng dòng, dữ liệu ngoài hóa đơn, phụ lục và điều kiện kê khai. Chưa điền XLSX hoặc lập XML.",
         },
         "totals": totals,
         "independent_check": independent,
+        "form_field_draft": form_field_draft,
         "findings": findings,
         "records": records,
         "limitations": [
@@ -899,6 +1472,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--period", required=True, help="Kỳ YYYY-MM hoặc YYYY-Q1..YYYY-Q4."
     )
+    parser.add_argument(
+        "--form-version",
+        choices=("80/2021/TT-BTC", "89/2026/TT-BTC"),
+        help="Chọn tường minh phiên bản mẫu; không tự suy ra theo kỳ.",
+    )
+    parser.add_argument(
+        "--law-watch-report",
+        help="JSON report từ accounting-law-watch; bắt buộc khi chọn phiên bản mẫu.",
+    )
     parser.add_argument("--sheet", help="Tên sheet đầu vào .xlsx.")
     parser.add_argument(
         "--header-row",
@@ -929,6 +1511,8 @@ def main(argv: list[str] | None = None) -> int:
             args.period,
             sheet_name=args.sheet,
             header_row=args.header_row,
+            form_version=args.form_version,
+            law_watch_report=args.law_watch_report,
         )
         write_draft(draft, output_path, force=args.force)
         print(
