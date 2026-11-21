@@ -12,7 +12,7 @@
     {"role_id": "TK05", "stage": "independent_check", "tool": "_independent_check_and_form_check", "implementation_status": "implemented"},
     {"role_id": "BM01", "stage": "template_review", "tool": "legal/form_catalog.json", "implementation_status": "source_inventory_verified_mapping_review_required"},
     {"role_id": "BM02", "stage": "template_copy", "tool": null, "implementation_status": "NOT_STARTED_official_xlsx_copy"},
-    {"role_id": "BM03", "stage": "field_mapping_and_export", "tool": "form_field_draft_and_write_draft", "implementation_status": "implemented_json_only_no_official_xlsx"},
+    {"role_id": "BM03", "stage": "field_mapping_and_export", "tool": "form_field_draft_and_write_draft", "implementation_status": "implemented_review_json_and_internal_xlsx_no_official_template"},
     {"role_id": "PL01", "stage": "collect_law", "tool": "accounting-law-watch", "implementation_status": "reuses_existing_skill_report_required"},
     {"role_id": "PL02", "stage": "effective_date_and_scope", "tool": "accounting-law-watch_report_review", "implementation_status": "human_review_required"},
     {"role_id": "PL03", "stage": "compare_amendments", "tool": "accounting-law-watch_registry_and_form_catalog", "implementation_status": "known_chain_reviewed_period_scope_human_review_required"},

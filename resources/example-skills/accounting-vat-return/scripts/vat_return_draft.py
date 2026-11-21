@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import html
 import json
 import os
 import posixpath
@@ -164,6 +165,7 @@ LAW_WATCH_REQUIRED_SOURCES = {
         "vanban_tt94_2025_tt80_update",
         "vanban_tt21_2026_tt80_update",
         "congbao_correction_2551_2026",
+        "vanban_tt110_2026",
     },
 }
 
@@ -1368,9 +1370,9 @@ def build_draft(
             {
                 "step": "export",
                 "owner_roles": ["BM03"],
-                "status": "JSON_form_field_draft_only"
+                "status": "review_only_json_or_internal_xlsx_with_field_draft"
                 if form_field_draft
-                else "JSON_draft_only",
+                else "review_only_json_or_internal_xlsx",
             },
             {
                 "step": "approval",
@@ -1408,7 +1410,7 @@ def build_draft(
             else "NOT_STARTED",
             "xml_export": "NOT_STARTED_SCHEMA_NOT_VERIFIED",
             "submission_ready": False,
-            "note": "Tờ khai JSON chỉ là bản nháp nội bộ. Mẫu được chọn tường minh qua CLI; người dùng vẫn phải xác nhận kỳ áp dụng, phân loại từng dòng, dữ liệu ngoài hóa đơn, phụ lục và điều kiện kê khai. Chưa điền XLSX hoặc lập XML.",
+            "note": "Bản JSON/XLSX chỉ là tài liệu soát xét nội bộ, không phải tờ khai pháp định. Mẫu được chọn tường minh qua CLI; người dùng vẫn phải xác nhận kỳ áp dụng, phân loại từng dòng, dữ liệu ngoài hóa đơn, phụ lục và điều kiện kê khai. Chưa điền mẫu XLSX chính thức hoặc lập XML.",
         },
         "totals": totals,
         "independent_check": independent,
@@ -1420,7 +1422,7 @@ def build_draft(
             "Đây là bản tổng hợp nội bộ, không phải tờ khai pháp định và không kết luận điều kiện khấu trừ.",
             "Mức thuế suất được giữ nguyên đúng nhãn nguồn; không suy thuế suất hoặc tự tính lại tiền thuế.",
             "Hóa đơn điều chỉnh, thay thế, hủy, trùng, ngoài kỳ hoặc có ô công thức cần xử lý thủ công trước khi tổng hợp.",
-            "Tệp nguồn chỉ được đọc; báo cáo xuất là JSON riêng. Xuất Excel/XLSX và XML chưa bắt đầu.",
+            "Tệp nguồn chỉ được đọc; workbook XLSX nội bộ không phải mẫu pháp định. Điền mẫu XLSX chính thức và XML chưa bắt đầu.",
         ],
     }
 
@@ -1429,31 +1431,33 @@ def write_draft(
     draft: dict[str, Any], output_path: str | Path, *, force: bool = False
 ) -> Path:
     destination = Path(output_path)
-    if destination.suffix.casefold() != ".json":
-        raise VatDraftError("Chỉ xuất JSON dự thảo; không gắn JSON vào đuôi tệp khác.")
+    output_format = destination.suffix.casefold()
+    if output_format not in {".json", ".xlsx"}:
+        raise VatDraftError("Chỉ xuất JSON hoặc workbook XLSX soát xét nội bộ.")
     source_name = str(draft.get("source_file", ""))
-    if destination.name == source_name and destination.suffix.casefold() in {
-        ".xlsx",
-        ".csv",
-    }:
+    if (
+        destination.name == source_name
+        and draft.get("input_format") == output_format.lstrip(".")
+    ):
         raise VatDraftError("Không được ghi đè workbook hoặc CSV nguồn.")
     if destination.exists() and not force:
         raise VatDraftError("Tệp dự thảo đã tồn tại; dùng --force khi muốn ghi đè.")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    serialized = json.dumps(draft, ensure_ascii=False, indent=2) + "\n"
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            newline="\n",
+            mode="w+b",
             prefix=f".{destination.name}.",
             suffix=".tmp",
             dir=destination.parent,
             delete=False,
         ) as temporary:
             temporary_path = Path(temporary.name)
-            temporary.write(serialized)
+            if output_format == ".json":
+                serialized = json.dumps(draft, ensure_ascii=False, indent=2) + "\n"
+                temporary.write(serialized.encode("utf-8"))
+            else:
+                _write_internal_review_workbook(draft, temporary)
             temporary.flush()
             os.fsync(temporary.fileno())
         os.replace(temporary_path, destination)
@@ -1461,6 +1465,228 @@ def write_draft(
     finally:
         if temporary_path is not None and temporary_path.exists():
             temporary_path.unlink()
+
+
+def _xml_safe_text(value: Any) -> str:
+    text = str(value)
+    cleaned = "".join(
+        character
+        for character in text
+        if character in "\t\n\r"
+        or " " <= character <= "\ud7ff"
+        or "\ue000" <= character <= "\ufffd"
+        or "\U00010000" <= character <= "\U0010ffff"
+    )
+    return html.escape(cleaned, quote=True)
+
+
+def _xlsx_column_name(number: int) -> str:
+    name = ""
+    while number:
+        number, remainder = divmod(number - 1, 26)
+        name = chr(65 + remainder) + name
+    return name
+
+
+def _xlsx_sheet_xml(rows: list[list[Any]]) -> str:
+    rendered_rows: list[str] = []
+    for row_number, row in enumerate(rows, start=1):
+        cells: list[str] = []
+        for column_number, value in enumerate(row, start=1):
+            reference = f"{_xlsx_column_name(column_number)}{row_number}"
+            cells.append(
+                f'<c r="{reference}" t="inlineStr"><is><t xml:space="preserve">'
+                f"{_xml_safe_text(value)}"
+                "</t></is></c>"
+            )
+        rendered_rows.append(f'<row r="{row_number}">{"".join(cells)}</row>')
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<sheetViews><sheetView workbookViewId="0"/></sheetViews>'
+        '<sheetFormatPr defaultRowHeight="15"/><sheetData>'
+        + "".join(rendered_rows)
+        + "</sheetData></worksheet>"
+    )
+
+
+def _internal_review_sheets(
+    draft: dict[str, Any],
+) -> list[tuple[str, list[list[Any]]]]:
+    legal_form = draft.get("legal_form", {})
+    period = draft.get("period", {})
+    form_fields = draft.get("form_field_draft") or {}
+    law_watch = legal_form.get("law_watch_review") or {}
+    overview = [
+        ["BẢN SOÁT XÉT NỘI BỘ — KHÔNG PHẢI TỜ KHAI CHÍNH THỨC"],
+        ["Trạng thái dự thảo", draft.get("draft_status", "")],
+        ["Kỳ kê khai", period.get("label", "")],
+        ["MST người nộp thuế", draft.get("taxpayer_tax_id", "")],
+        ["Tệp nguồn", draft.get("source_file", "")],
+        ["Phiên bản mẫu được chọn tường minh", legal_form.get("version") or "Chưa chọn"],
+        ["Kết quả kiểm tra nguồn pháp luật", law_watch.get("status", "not_run")],
+        [
+            "Đối chiếu độc lập",
+            (draft.get("independent_check") or {}).get("status", "not_run"),
+        ],
+        ["Sẵn sàng nộp", "KHÔNG — cần người có thẩm quyền rà soát và duyệt"],
+        ["Mẫu XLSX pháp định", "NOT STARTED — workbook này không thay thế mẫu 01/GTGT"],
+        ["XML/schema", legal_form.get("xml_export", "NOT_STARTED_SCHEMA_NOT_VERIFIED")],
+        [
+            "Lưu ý",
+            "Không tự chọn mẫu, không tự áp dụng công thức pháp lý; giữ nguyên tệp nguồn.",
+        ],
+    ]
+    summary: list[list[Any]] = [["Nhóm", "Chỉ tiêu", "Giá trị", "Ghi chú"]]
+    for direction, values in draft.get("totals", {}).get("by_direction", {}).items():
+        for key, value in values.items():
+            summary.append(
+                [direction, key, value, "Tổng trên hóa đơn đủ điều kiện soát xét"]
+            )
+    for bucket, values in (
+        draft.get("totals", {}).get("by_direction_and_invoice_rate_label", {}).items()
+    ):
+        for key, value in values.items():
+            summary.append(
+                [bucket, key, value, "Giữ nguyên nhãn thuế suất từ nguồn"]
+            )
+    if form_fields:
+        def field_order(item: tuple[str, Any]) -> tuple[int, str]:
+            match = re.match(r"\d+", item[0])
+            return (int(match.group()) if match else 999, item[0])
+
+        for code, value in sorted(form_fields.get("amounts", {}).items(), key=field_order):
+            summary.append(
+                [
+                    "Chỉ tiêu mẫu — dự thảo",
+                    f"[{code}]",
+                    "" if value is None else value,
+                    "Cần rà mapping và dữ liệu ngoài hóa đơn",
+                ]
+            )
+    else:
+        summary.append(
+            ["Chỉ tiêu mẫu — dự thảo", "NOT STARTED", "", "Chưa chọn phiên bản mẫu"]
+        )
+
+    invoices: list[list[Any]] = [
+        [
+            "Dòng nguồn",
+            "Ngày hóa đơn",
+            "Chiều",
+            "MST người bán",
+            "Tên người bán",
+            "MST người mua",
+            "Tên người mua",
+            "Ký hiệu",
+            "Số hóa đơn",
+            "Thuế suất nguồn",
+            "Trước thuế",
+            "Tiền thuế",
+            "Tổng thanh toán",
+            "Trạng thái",
+            "Đưa vào tổng",
+            "Mã chỉ tiêu doanh thu",
+            "Mã chỉ tiêu thuế",
+        ]
+    ]
+    for record in draft.get("records", []):
+        invoices.append(
+            [
+                record.get("source_row", ""),
+                record.get("invoice_date", ""),
+                record.get("direction", ""),
+                record.get("seller_tax_id", ""),
+                record.get("seller_name", ""),
+                record.get("buyer_tax_id", ""),
+                record.get("buyer_name", ""),
+                record.get("invoice_series", ""),
+                record.get("invoice_number", ""),
+                record.get("tax_rate_label", ""),
+                record.get("net_amount", ""),
+                record.get("tax_amount", ""),
+                record.get("gross_amount", ""),
+                record.get("status", ""),
+                "Có" if record.get("eligible_for_draft_totals") else "Không — cần soát",
+                record.get("form_line_code", ""),
+                record.get("form_tax_line_code", ""),
+            ]
+        )
+    findings: list[list[Any]] = [["Mức độ", "Mã", "Dòng nguồn", "Chi tiết"]]
+    for finding in draft.get("findings", []):
+        findings.append(
+            [
+                finding.get("severity", ""),
+                finding.get("code", ""),
+                finding.get("source_row", ""),
+                json.dumps(finding, ensure_ascii=False, sort_keys=True),
+            ]
+        )
+    if len(findings) == 1:
+        findings.append(
+            [
+                "info",
+                "no_findings",
+                "",
+                "Không phát hiện ngoại lệ theo các kiểm tra tự động đã triển khai.",
+            ]
+        )
+    return [
+        ("00_Canh bao", overview),
+        ("01_Tong hop", summary),
+        ("02_Hoa don", invoices),
+        ("03_Ngoai le", findings),
+    ]
+
+
+def _write_internal_review_workbook(draft: dict[str, Any], stream: Any) -> None:
+    sheets = _internal_review_sheets(draft)
+    main_ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    pkg_rel_ns = "http://schemas.openxmlformats.org/package/2006/relationships"
+    content_types_ns = "http://schemas.openxmlformats.org/package/2006/content-types"
+    workbook_sheets = "".join(
+        f'<sheet name="{_xml_safe_text(name)}" sheetId="{index}" r:id="rId{index}"/>'
+        for index, (name, _rows) in enumerate(sheets, start=1)
+    )
+    workbook_rels = "".join(
+        f'<Relationship Id="rId{index}" Type="{rel_ns}/worksheet" Target="worksheets/sheet{index}.xml"/>'
+        for index in range(1, len(sheets) + 1)
+    )
+    sheet_overrides = "".join(
+        f'<Override PartName="/xl/worksheets/sheet{index}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        for index in range(1, len(sheets) + 1)
+    )
+    parts = {
+        "[Content_Types].xml": (
+            f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            f'<Types xmlns="{content_types_ns}">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            f"{sheet_overrides}</Types>"
+        ),
+        "_rels/.rels": (
+            f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            f'<Relationships xmlns="{pkg_rel_ns}">'
+            f'<Relationship Id="rId1" Type="{rel_ns}/officeDocument" Target="xl/workbook.xml"/>'
+            "</Relationships>"
+        ),
+        "xl/workbook.xml": (
+            f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            f'<workbook xmlns="{main_ns}" xmlns:r="{rel_ns}">'
+            f"<sheets>{workbook_sheets}</sheets></workbook>"
+        ),
+        "xl/_rels/workbook.xml.rels": (
+            f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            f'<Relationships xmlns="{pkg_rel_ns}">{workbook_rels}</Relationships>'
+        ),
+    }
+    for index, (_name, rows) in enumerate(sheets, start=1):
+        parts[f"xl/worksheets/sheet{index}.xml"] = _xlsx_sheet_xml(rows)
+    with zipfile.ZipFile(stream, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, content in parts.items():
+            archive.writestr(name, content.encode("utf-8"))
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -1487,7 +1713,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         help="Số hàng tiêu đề trong Excel; mặc định hàng có dữ liệu đầu tiên.",
     )
-    parser.add_argument("--output", help="Đường dẫn JSON dự thảo riêng.")
+    parser.add_argument(
+        "--output", help="Đường dẫn JSON hoặc workbook XLSX soát xét nội bộ."
+    )
     parser.add_argument(
         "--force", action="store_true", help="Cho phép ghi đè tệp dự thảo đã có."
     )

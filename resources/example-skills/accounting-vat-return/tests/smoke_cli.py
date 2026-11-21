@@ -7,6 +7,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,7 @@ def main() -> int:
         root = Path(temporary)
         source = root / "synthetic-invoices.csv"
         output = root / "draft.json"
+        review_workbook = root / "review-only.xlsx"
         law_watch_report = root / "law-watch-report.json"
         source.write_text(
             "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
@@ -34,6 +36,7 @@ def main() -> int:
             "vanban_tt94_2025_tt80_update",
             "vanban_tt21_2026_tt80_update",
             "congbao_correction_2551_2026",
+            "vanban_tt110_2026",
         ]
         law_watch_report.write_text(
             json.dumps(
@@ -91,14 +94,51 @@ def main() -> int:
         assert draft["legal_form"]["version"] == "89/2026/TT-BTC"
         assert draft["legal_form"]["submission_ready"] is False
         assert draft["legal_form"]["xml_export"] == "NOT_STARTED_SCHEMA_NOT_VERIFIED"
+        workbook_run = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                str(source),
+                "--taxpayer-tax-id",
+                "0100000001",
+                "--period",
+                "2026-Q3",
+                "--form-version",
+                "89/2026/TT-BTC",
+                "--law-watch-report",
+                str(law_watch_report),
+                "--output",
+                str(review_workbook),
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+        if workbook_run.returncode != 0:
+            raise SystemExit(workbook_run.stderr or workbook_run.stdout)
+        with zipfile.ZipFile(review_workbook) as archive:
+            assert archive.testzip() is None
+            workbook_xml = archive.read("xl/workbook.xml").decode("utf-8")
+            invoice_xml = archive.read("xl/worksheets/sheet3.xml").decode("utf-8")
+            warning_xml = archive.read("xl/worksheets/sheet1.xml").decode("utf-8")
+            assert "00_Canh bao" in workbook_xml
+            assert "01_Tong hop" in workbook_xml
+            assert "02_Hoa don" in workbook_xml
+            assert "03_Ngoai le" in workbook_xml
+            assert "00017" in invoice_xml
+            assert "KHÔNG PHẢI TỜ KHAI CHÍNH THỨC" in warning_xml
+            assert "NOT STARTED" in warning_xml
+            assert b"<f" not in b"".join(
+                archive.read(name) for name in archive.namelist() if name.endswith(".xml")
+            )
         print(
-            "PASS: import -> classify -> validate -> aggregate -> TT89 field draft -> independent check -> JSON export"
+            "PASS: import -> classify -> validate -> aggregate -> TT89 field draft -> independent check -> JSON and review-only XLSX export"
         )
         print(
             "INFO: law-watch input is synthetic fixture data, not a live-source result"
         )
         print(
-            "BLOCKED as designed: official XLSX output and XML schema are not enabled"
+            "BLOCKED as designed: official 01/GTGT XLSX mapping and XML schema are not enabled"
         )
     return 0
 

@@ -187,6 +187,7 @@ def write_law_watch_report(path: Path, version: str) -> Path:
             "vanban_tt94_2025_tt80_update",
             "vanban_tt21_2026_tt80_update",
             "congbao_correction_2551_2026",
+            "vanban_tt110_2026",
         ],
     }[version]
     report = {
@@ -340,6 +341,75 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertEqual(loaded["records"][0]["invoice_number"], "00017")
         self.assertFalse(loaded["legal_form"]["submission_ready"])
         self.assertEqual(loaded["draft_status"], "draft_ready_unmapped")
+
+    def test_xlsx_source_exports_internal_review_workbook_without_mutation(self) -> None:
+        original = self.workbook.read_bytes()
+        draft = vat.build_draft(
+            self.workbook, "0100000001", "2026-Q3", sheet_name="HoaDon"
+        )
+        output = vat.write_draft(draft, self.root / "review-workbook.xlsx")
+        self.assertEqual(self.workbook.read_bytes(), original)
+        with self.assertRaisesRegex(vat.VatDraftError, "ghi đè"):
+            vat.write_draft(draft, self.workbook, force=True)
+        self.assertEqual(self.workbook.read_bytes(), original)
+        with zipfile.ZipFile(output) as archive:
+            self.assertIsNone(archive.testzip())
+            xml_parts = [
+                name
+                for name in archive.namelist()
+                if name.endswith(".xml") or name.endswith(".rels")
+            ]
+            parsed = {name: ET.fromstring(archive.read(name)) for name in xml_parts}
+            workbook = parsed["xl/workbook.xml"]
+            names = [
+                sheet.attrib["name"]
+                for sheet in workbook.findall(f"{{{MAIN_NS}}}sheets/{{{MAIN_NS}}}sheet")
+            ]
+            self.assertEqual(
+                names,
+                ["00_Canh bao", "01_Tong hop", "02_Hoa don", "03_Ngoai le"],
+            )
+            all_text = " ".join(
+                element.text or ""
+                for root in parsed.values()
+                for element in root.iter(f"{{{MAIN_NS}}}t")
+            )
+            self.assertIn("BẢN SOÁT XÉT NỘI BỘ", all_text)
+            self.assertIn("không thay thế mẫu 01/GTGT", all_text)
+            self.assertIn("00017", all_text)
+            self.assertNotIn("<f", " ".join(archive.read(name).decode() for name in xml_parts))
+        self.assertFalse(draft["legal_form"]["submission_ready"])
+
+    def test_tt89_form_draft_blocks_when_tt110_source_is_not_verified(self) -> None:
+        source = self.root / "tt110-not-verified.csv"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            "2026-08-01,0100000001,0300000001,S1,1,100,5%,5,105,Bình thường,30,31\n",
+            encoding="utf-8",
+        )
+        report_path = write_law_watch_report(
+            self.root / "tt110-not-verified.json", "89/2026/TT-BTC"
+        )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["official_reference_checks"] = [
+            item
+            for item in report["official_reference_checks"]
+            if item["name"] != "vanban_tt110_2026"
+        ]
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        draft = vat.build_draft(
+            source,
+            "0100000001",
+            "2026-Q3",
+            form_version="89/2026/TT-BTC",
+            law_watch_report=report_path,
+        )
+        self.assertEqual(draft["draft_status"], "blocked_review_required")
+        self.assertEqual(draft["legal_form"]["law_watch_review"]["status"], "blocked")
+        self.assertIn(
+            "vanban_tt110_2026",
+            draft["legal_form"]["law_watch_review"]["unverified_sources"],
+        )
 
     def test_amount_mismatch_blocks_submission_draft_and_checks_month_quarter(
         self,
