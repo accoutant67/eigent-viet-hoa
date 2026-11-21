@@ -600,19 +600,30 @@ class VatReturnDraftTests(unittest.TestCase):
             tax_admin_sources["91/2026/TT-BTC"]["review_status"],
         )
 
-    def test_tax_administration_and_einvoice_sources_only_gate_tt89(self) -> None:
-        post_2026_sources = {
-            "vanban_law_tax_admin_108_2025",
+    def test_einvoice_sources_and_tax_admin_follow_their_period_windows(self) -> None:
+        einvoice_sources = {
             "vanban_decree_invoice_254_2026",
             "vanban_circular_invoice_91_2026",
         }
+        tax_admin_source = "vanban_law_tax_admin_108_2025"
         self.assertTrue(
-            post_2026_sources.isdisjoint(
+            einvoice_sources.isdisjoint(
                 vat.LAW_WATCH_REQUIRED_SOURCES["80/2021/TT-BTC"]
             )
         )
         self.assertTrue(
-            post_2026_sources.issubset(vat.LAW_WATCH_REQUIRED_SOURCES["89/2026/TT-BTC"])
+            einvoice_sources.issubset(
+                vat.LAW_WATCH_REQUIRED_SOURCES["89/2026/TT-BTC"]
+            )
+        )
+        self.assertIn(tax_admin_source, vat.LAW_WATCH_REQUIRED_SOURCES["80/2021/TT-BTC"])
+        self.assertNotIn(
+            tax_admin_source,
+            vat._required_law_watch_sources("80/2021/TT-BTC", "2025-Q4"),
+        )
+        self.assertIn(
+            tax_admin_source,
+            vat._required_law_watch_sources("80/2021/TT-BTC", "2026-Q1"),
         )
 
     def test_law_watch_sources_are_gated_by_period_effective_windows(self) -> None:
