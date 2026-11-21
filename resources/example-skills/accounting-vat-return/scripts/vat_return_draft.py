@@ -149,6 +149,11 @@ FORM_TAX_FIELDS = {"31", "33"}
 FORM_PURCHASE_VALUE_FIELDS = {"23", "23a"}
 FORM_PURCHASE_TAX_FIELDS = {"24", "24a"}
 PURCHASE_TAX_LINE_BY_VALUE = {"23": "24", "23a": "24a"}
+FORM_EXTERNAL_INPUTS = {"22", "25", "37", "38", "39a", "40b", "42"}
+FORM_VERSION_WINDOWS = {
+    "80/2021/TT-BTC": (dt.date(2022, 1, 1), dt.date(2026, 6, 30)),
+    "89/2026/TT-BTC": (dt.date(2026, 7, 1), None),
+}
 LAW_WATCH_REQUIRED_SOURCES = {
     "80/2021/TT-BTC": {
         "congbao_tt80_2021",
@@ -523,19 +528,114 @@ def _form_version_spec(version: str) -> dict[str, Any]:
             "Không đọc được danh mục phiên bản mẫu GTGT đã xác minh."
         ) from exc
     for candidate in versions:
-        if candidate.get("instrument") == version:
+        if candidate.get("version_key", candidate.get("instrument")) == version:
             return candidate
     raise VatDraftError(f"Phiên bản mẫu GTGT chưa có trong danh mục: {version}.")
 
 
-def _review_law_watch_report(
-    report_path: str | Path | None, version: str
+def _review_form_applicability(
+    period: str,
+    version: str,
+    taxpayer_case: str,
+    filing_type: str,
 ) -> dict[str, Any]:
+    start, end, _period_type = period_window(period)
+    spec = _form_version_spec(version)
+    if version not in FORM_VERSION_WINDOWS:
+        raise VatDraftError(f"Chưa có kỳ hiệu lực đã xác minh cho mẫu {version}.")
+    valid_from, valid_through = FORM_VERSION_WINDOWS[version]
+    reasons: list[str] = []
+    if start < valid_from or (valid_through is not None and end > valid_through):
+        reasons.append("form_version_outside_verified_effective_window")
+    if start < dt.date(2026, 7, 1) <= end:
+        reasons.append("tax_period_crosses_form_effective_boundary")
+    expected_version = (
+        "80/2021/TT-BTC" if end < dt.date(2026, 7, 1) else "89/2026/TT-BTC"
+    )
+    if start >= dt.date(2022, 1, 1) and expected_version != version:
+        reasons.append("form_version_does_not_match_tax_period")
+    if end < dt.date(2022, 1, 1):
+        reasons.append("no_supported_form_version_for_tax_period")
+    if taxpayer_case != "credit_method_production_business":
+        reasons.append(
+            "taxpayer_case_not_confirmed_for_01_gtgt"
+            if taxpayer_case == "unconfirmed"
+            else "taxpayer_case_outside_01_gtgt_scope"
+        )
+    if filing_type != "first":
+        reasons.append(
+            "filing_type_not_confirmed"
+            if filing_type == "unconfirmed"
+            else "supplementary_filing_requires_01_khbs_not_supported"
+        )
+
+    return {
+        "status": "pass" if not reasons else "blocked",
+        "period": period.upper(),
+        "period_start": start.isoformat(),
+        "period_end": end.isoformat(),
+        "selected_version": version,
+        "expected_version_by_effective_date": expected_version,
+        "taxpayer_case": taxpayer_case,
+        "filing_type": filing_type,
+        "reasons": reasons,
+        "effective_from": spec.get("effective_from"),
+        "effective_through": spec.get("effective_through"),
+        "basis": "TT89/2026 Article 100(1) transition; TT80 window ends 2026-06-30; confirm taxpayer scope and first-filing status",
+        "auto_form_selection": False,
+    }
+
+
+def _normalize_supplemental_form_inputs(
+    inputs: dict[str, Any] | None,
+) -> tuple[dict[str, Decimal], dict[str, str]]:
+    amounts: dict[str, Decimal] = {}
+    sources: dict[str, str] = {}
+    if inputs is None:
+        return amounts, sources
+    if not isinstance(inputs, dict):
+        raise VatDraftError("Dữ liệu bổ sung tờ khai phải là một object JSON.")
+    for code, item in inputs.items():
+        line_code = normalize_form_line_code(str(code))
+        if line_code not in FORM_EXTERNAL_INPUTS:
+            raise VatDraftError(f"Không nhận chỉ tiêu bổ sung ngoài danh sách: {code}.")
+        if not isinstance(item, dict):
+            raise VatDraftError(
+                f"Chỉ tiêu [{line_code}] cần có amount và source để truy vết."
+            )
+        source = str(item.get("source", "")).strip()
+        amount_raw = item.get("amount")
+        if not source or amount_raw in (None, ""):
+            raise VatDraftError(
+                f"Chỉ tiêu [{line_code}] thiếu số tiền hoặc nguồn dữ liệu."
+            )
+        amount = parse_money(str(amount_raw))
+        if amount is None or not amount.is_finite():
+            raise VatDraftError(
+                f"Chỉ tiêu [{line_code}] phải là số tiền hữu hạn hợp lệ."
+            )
+        amounts[line_code] = amount
+        sources[line_code] = source
+    return amounts, sources
+
+
+def _review_law_watch_report(
+    report_path: str | Path | None, version: str, period: str
+) -> dict[str, Any]:
+    period_end = period_window(period)[1]
+    required = set(LAW_WATCH_REQUIRED_SOURCES[version])
+    if version == "80/2021/TT-BTC":
+        if period_end < dt.date(2025, 7, 1):
+            required.discard("vanban_tt40_2025_tt80_form_update")
+        if period_end < dt.date(2025, 10, 14):
+            required.discard("vanban_tt94_2025_tt80_update")
+        if period_end < dt.date(2026, 3, 17):
+            required.discard("vanban_tt21_2026_tt80_update")
     if report_path is None:
         return {
             "status": "blocked",
             "reason": "law_watch_report_required_for_form_draft",
-            "missing_sources": sorted(LAW_WATCH_REQUIRED_SOURCES[version]),
+            "missing_sources": sorted(required),
         }
     try:
         report = json.loads(Path(report_path).read_text(encoding="utf-8"))
@@ -543,7 +643,7 @@ def _review_law_watch_report(
         return {
             "status": "blocked",
             "reason": f"law_watch_report_unreadable:{type(exc).__name__}",
-            "missing_sources": sorted(LAW_WATCH_REQUIRED_SOURCES[version]),
+            "missing_sources": sorted(required),
         }
     if not isinstance(report, dict):
         report = {}
@@ -557,7 +657,6 @@ def _review_law_watch_report(
         if isinstance(checks, list)
         else {}
     )
-    required = LAW_WATCH_REQUIRED_SOURCES[version]
     not_verified = sorted(
         source for source in required if status_by_source.get(source) != "pass"
     )
@@ -609,8 +708,32 @@ def _evaluate_form_formula(
     return total
 
 
+def _evaluate_catalog_formula(
+    line_code: str, spec: dict[str, Any], values: dict[str, Decimal | None]
+) -> Decimal | None:
+    conditional = spec.get("conditional_formulas", {}).get(line_code)
+    if conditional:
+        result = _evaluate_form_formula(conditional["expression"], values)
+        if result is None:
+            return None
+        condition = conditional.get("condition")
+        if condition == "nonnegative":
+            return result if result >= 0 else None
+        if condition == "nonpositive":
+            return result if result <= 0 else None
+        raise VatDraftError(
+            f"Điều kiện công thức biểu mẫu không được hỗ trợ: {condition}"
+        )
+    expression = spec["verified_form_formulas"][line_code]
+    return _evaluate_form_formula(expression, values)
+
+
 def _form_field_draft(
-    records: list[dict[str, Any]], version: str | None
+    records: list[dict[str, Any]],
+    version: str | None,
+    *,
+    invoice_data_complete: bool,
+    supplemental_form_inputs: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     if version is None:
         return None
@@ -619,19 +742,14 @@ def _form_field_draft(
     if allowed_revenue is None:
         raise VatDraftError(f"Chưa hỗ trợ ánh xạ nháp cho mẫu {version}.")
 
+    external_amounts, external_sources = _normalize_supplemental_form_inputs(
+        supplemental_form_inputs
+    )
     values: dict[str, Decimal | None] = {
-        "23": Decimal(0),
-        "23a": Decimal(0),
-        "24": Decimal(0),
-        "24a": Decimal(0),
-        "25": None,
-        "22": None,
-        "37": None,
-        "38": None,
-        "39a": None,
-        "40b": None,
-        "42": None,
+        code: None for code in FORM_EXTERNAL_INPUTS
     }
+    values.update(external_amounts)
+    source_rows_by_line: dict[str, set[int]] = defaultdict(set)
     findings: list[dict[str, Any]] = []
     unmapped_rows: list[int] = []
     unmapped_purchase_rows: list[int] = []
@@ -679,9 +797,11 @@ def _form_field_draft(
 
             net_amount = Decimal(record["net_amount"])
             tax_amount = Decimal(record["tax_amount"])
-            values["23"] += net_amount
+            values["23"] = (values.get("23") or Decimal(0)) + net_amount
+            source_rows_by_line["23"].add(record["source_row"])
             if value_code == "23a":
-                values["23a"] = (values["23a"] or Decimal(0)) + net_amount
+                values["23a"] = (values.get("23a") or Decimal(0)) + net_amount
+                source_rows_by_line["23a"].add(record["source_row"])
 
             expected_tax_code = PURCHASE_TAX_LINE_BY_VALUE[value_code]
             if tax_amount and not tax_code:
@@ -719,9 +839,11 @@ def _form_field_draft(
                 )
                 continue
 
-            values["24"] += tax_amount
+            values["24"] = (values.get("24") or Decimal(0)) + tax_amount
+            source_rows_by_line["24"].add(record["source_row"])
             if value_code == "23a":
-                values["24a"] = (values["24a"] or Decimal(0)) + tax_amount
+                values["24a"] = (values.get("24a") or Decimal(0)) + tax_amount
+                source_rows_by_line["24a"].add(record["source_row"])
             continue
         if record["direction"] != "sales":
             continue
@@ -752,6 +874,7 @@ def _form_field_draft(
             values[revenue_code] = (values.get(revenue_code) or Decimal(0)) + Decimal(
                 record["net_amount"]
             )
+            source_rows_by_line[revenue_code].add(record["source_row"])
 
         tax_amount = Decimal(record["tax_amount"])
         if tax_amount and not tax_code:
@@ -775,8 +898,32 @@ def _form_field_draft(
             )
         elif tax_code:
             values[tax_code] = (values.get(tax_code) or Decimal(0)) + tax_amount
+            source_rows_by_line[tax_code].add(record["source_row"])
 
-    if complete:
+    unresolved_source_rows = sorted(
+        record["source_row"]
+        for record in records
+        if not record["eligible_for_draft_totals"]
+        and record.get("review_reasons") != ["outside_selected_period_by_invoice_date"]
+    )
+    if invoice_data_complete and unresolved_source_rows:
+        complete = False
+        findings.append(
+            {
+                "severity": "review",
+                "code": "invoice_rows_not_eligible_zero_not_assumed",
+                "source_rows": unresolved_source_rows,
+            }
+        )
+
+    safe_to_default_empty_invoice_lines = (
+        invoice_data_complete
+        and not unresolved_source_rows
+        and not unmapped_rows
+        and not unmapped_purchase_rows
+        and not any(item["severity"] == "block" for item in findings)
+    )
+    if safe_to_default_empty_invoice_lines:
         for line_code in (
             allowed_revenue
             | FORM_TAX_FIELDS
@@ -784,45 +931,152 @@ def _form_field_draft(
             | FORM_PURCHASE_TAX_FIELDS
         ):
             values.setdefault(line_code, Decimal(0))
+    if not invoice_data_complete:
+        complete = False
+        findings.append(
+            {
+                "severity": "review",
+                "code": "invoice_data_coverage_not_confirmed_zero_not_assumed",
+            }
+        )
+
+    missing_external_inputs = sorted(FORM_EXTERNAL_INPUTS - set(external_amounts))
+    if missing_external_inputs:
+        findings.append(
+            {
+                "severity": "review",
+                "code": "external_form_inputs_missing_no_zero_assumed",
+                "line_codes": missing_external_inputs,
+            }
+        )
 
     for line_code, expression in spec["verified_form_formulas"].items():
-        values[line_code] = _evaluate_form_formula(expression, values)
+        values[line_code] = _evaluate_catalog_formula(line_code, spec, values)
+
+    if values.get("40a") is not None and values.get("40b") is not None:
+        if values["40b"] > values["40a"]:
+            findings.append(
+                {
+                    "severity": "block",
+                    "code": "investment_tax_credit_exceeds_current_period_payable",
+                    "line_code": "40b",
+                }
+            )
+    if values.get("41") is not None and values.get("42") is not None:
+        if values["42"] > values["41"]:
+            findings.append(
+                {
+                    "severity": "block",
+                    "code": "refund_request_exceeds_uncredited_vat",
+                    "line_code": "42",
+                }
+            )
+
+    formula_sources = {
+        code: re.findall(r"\d{1,2}[a-z]?", expression)
+        for code, expression in spec["verified_form_formulas"].items()
+    }
+    traceability: dict[str, dict[str, Any]] = {}
+    for code, amount in values.items():
+        if code in FORM_EXTERNAL_INPUTS:
+            traceability[code] = {
+                "source_type": "supplemental_input"
+                if code in external_sources
+                else "missing_external_input",
+                "source_rows": [],
+                "source_reference": external_sources.get(code),
+                "amount_present": amount is not None,
+            }
+        elif code in formula_sources:
+            source_codes = formula_sources[code]
+            source_rows = sorted(
+                {
+                    row_number
+                    for source_code in source_codes
+                    for row_number in source_rows_by_line.get(source_code, set())
+                }
+            )
+            traceability[code] = {
+                "source_type": "derived_formula",
+                "formula": spec["verified_form_formulas"][code],
+                "formula_condition": spec.get("conditional_formulas", {}).get(code),
+                "input_lines": source_codes,
+                "source_rows": source_rows,
+                "amount_present": amount is not None,
+            }
+        else:
+            source_rows = sorted(source_rows_by_line.get(code, set()))
+            traceability[code] = {
+                "source_type": "invoice_rows" if source_rows else "no_source_rows",
+                "source_fields": [
+                    "tax_amount" if code in FORM_TAX_FIELDS | FORM_PURCHASE_TAX_FIELDS
+                    else "net_amount"
+                ],
+                "source_rows": source_rows,
+                "coverage_confirmed": invoice_data_complete,
+                "amount_present": amount is not None,
+            }
 
     rendered_values = {
         code: money_text(amount) if amount is not None else None
         for code, amount in sorted(values.items())
     }
     blocked = any(item["severity"] == "block" for item in findings)
+    mapping_complete = complete and not blocked
+    calculation_complete = mapping_complete and not missing_external_inputs
     return {
         "form_number": "01/GTGT",
         "version": version,
-        "mapping_status": "blocked_invalid_line" if blocked else "review_required",
-        "mapping_complete": complete and not blocked,
+        "mapping_status": "blocked_invalid_line"
+        if blocked
+        else "mapped_for_review"
+        if mapping_complete
+        else "partial_inputs",
+        "mapping_complete": mapping_complete,
+        "calculation_complete": calculation_complete,
         "selected_by": "explicit_cli_selection",
         "line_mapping_source": "explicit source columns; no tax-rate inference",
         "amounts": rendered_values,
+        "traceability": traceability,
         "unmapped_sales_rows": sorted(unmapped_rows),
         "unmapped_purchase_rows": sorted(unmapped_purchase_rows),
         "findings": findings,
-        "external_inputs_not_provided": [
-            "22",
-            "25",
-            "37",
-            "38",
-            "39a",
-            "40b",
-            "42",
-        ],
+        "invoice_data_complete_for_period": invoice_data_complete,
+        "external_inputs_not_provided": missing_external_inputs,
+        "external_inputs": {
+            code: {"amount": money_text(amount), "source": external_sources[code]}
+            for code, amount in sorted(external_amounts.items())
+        },
         "submission_ready": False,
         "output_type": "internal_json_draft_only",
     }
 
 
 def _independent_form_check(
-    records: list[dict[str, Any]], version: str, primary: dict[str, Any]
+    records: list[dict[str, Any]],
+    version: str,
+    primary: dict[str, Any],
+    *,
+    invoice_data_complete: bool,
+    supplemental_form_inputs: dict[str, Any] | None,
 ) -> dict[str, Any]:
     """Recompute mapped form fields in a separate pass over eligible invoice rows."""
     fields = FORM_REVENUE_FIELDS[version]
+    if not invoice_data_complete:
+        return {
+            "status": "review_required",
+            "reason": "invoice coverage was not confirmed; missing lines remain unknown",
+        }
+    external_amounts, _external_sources = _normalize_supplemental_form_inputs(
+        supplemental_form_inputs
+    )
+    missing_external = FORM_EXTERNAL_INPUTS - set(external_amounts)
+    if missing_external:
+        return {
+            "status": "review_required",
+            "reason": "external form inputs are missing",
+            "missing_line_codes": sorted(missing_external),
+        }
     if not any(
         row["eligible_for_draft_totals"] is True and row["direction"] == "sales"
         for row in records
@@ -831,19 +1085,11 @@ def _independent_form_check(
             "status": "review_required",
             "reason": "sales records are absent; form mapping needs confirmation",
         }
-    recomputed: dict[str, Decimal | None] = {
-        "23": Decimal(0),
-        "23a": Decimal(0),
-        "24": Decimal(0),
-        "24a": Decimal(0),
-        "25": None,
-        "22": None,
-        "37": None,
-        "38": None,
-        "39a": None,
-        "40b": None,
-        "42": None,
-    }
+    recomputed: dict[str, Decimal | None] = dict(external_amounts)
+    for code in (
+        fields | FORM_TAX_FIELDS | FORM_PURCHASE_VALUE_FIELDS | FORM_PURCHASE_TAX_FIELDS
+    ):
+        recomputed.setdefault(code, Decimal(0))
     for row in records:
         if row["eligible_for_draft_totals"] is not True:
             continue
@@ -902,28 +1148,12 @@ def _independent_form_check(
                     str(recomputed.get(tax_code) or Decimal(0))
                 )
 
-    for code in (
-        fields | FORM_TAX_FIELDS | FORM_PURCHASE_VALUE_FIELDS | FORM_PURCHASE_TAX_FIELDS
-    ):
-        recomputed.setdefault(code, Decimal(0))
-
-    formulas = _form_version_spec(version)["verified_form_formulas"]
-    for code, expression in formulas.items():
-        pieces = re.split(r"\s*([+-])\s*", expression.strip())
-        if not pieces or len(pieces) % 2 == 0:
-            return {"status": "fail", "reason": "unsupported official formula"}
-        current = recomputed.get(pieces[0])
-        if current is None:
-            recomputed[code] = None
-            continue
-        result = current
-        for offset in range(1, len(pieces), 2):
-            operand = recomputed.get(pieces[offset + 1])
-            if operand is None:
-                result = None
-                break
-            result = result + operand if pieces[offset] == "+" else result - operand
-        recomputed[code] = result
+    spec = _form_version_spec(version)
+    try:
+        for code in spec["verified_form_formulas"]:
+            recomputed[code] = _evaluate_catalog_formula(code, spec, recomputed)
+    except (KeyError, VatDraftError) as exc:
+        return {"status": "fail", "reason": f"unsupported official formula: {exc}"}
 
     rendered = {
         code: money_text(amount) if amount is not None else None
@@ -1233,6 +1463,10 @@ def build_draft(
     header_row: int | None = None,
     form_version: str | None = None,
     law_watch_report: str | Path | None = None,
+    taxpayer_case: str = "unconfirmed",
+    filing_type: str = "unconfirmed",
+    invoice_data_complete: bool = False,
+    supplemental_form_inputs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     source = Path(input_path)
     if not source.is_file():
@@ -1243,30 +1477,55 @@ def build_draft(
     imported = read_invoice_rows(source, sheet_name, header_row)
     records, findings = _invoice_records(imported, taxpayer_tax_id, start, end)
     law_watch_review = (
-        _review_law_watch_report(law_watch_report, form_version)
+        _review_law_watch_report(law_watch_report, form_version, period)
         if form_version
         else None
     )
+    applicability_review = (
+        _review_form_applicability(
+            period, form_version, taxpayer_case, filing_type
+        )
+        if form_version
+        else None
+    )
+    form_review_failures: list[dict[str, Any]] = []
+    if form_version and applicability_review and applicability_review["status"] != "pass":
+        form_review_failures.append(
+            {
+                "severity": "block",
+                "code": "form_applicability_review_not_passed",
+                "details": applicability_review,
+            }
+        )
     if form_version and law_watch_review and law_watch_review["status"] != "pass":
+        form_review_failures.append(
+            {
+                "severity": "block",
+                "code": "law_watch_review_not_passed",
+                "details": law_watch_review,
+            }
+        )
+    if form_review_failures:
         form_field_draft = {
             "form_number": "01/GTGT",
             "version": form_version,
-            "mapping_status": "blocked_legal_review",
+            "mapping_status": "blocked_applicability_or_legal_review",
             "mapping_complete": False,
+            "calculation_complete": False,
             "amounts": {},
             "unmapped_sales_rows": [],
-            "findings": [
-                {
-                    "severity": "block",
-                    "code": "law_watch_review_not_passed",
-                    "details": law_watch_review,
-                }
-            ],
+            "findings": form_review_failures,
+            "external_inputs_not_provided": sorted(FORM_EXTERNAL_INPUTS),
             "submission_ready": False,
             "output_type": "internal_json_draft_only",
         }
     else:
-        form_field_draft = _form_field_draft(records, form_version)
+        form_field_draft = _form_field_draft(
+            records,
+            form_version,
+            invoice_data_complete=invoice_data_complete,
+            supplemental_form_inputs=supplemental_form_inputs,
+        )
     if form_field_draft:
         findings.extend(form_field_draft["findings"])
     if imported and not any(record["eligible_for_draft_totals"] for record in records):
@@ -1277,9 +1536,13 @@ def build_draft(
     independent = _independent_check(records, totals)
     if not independent["totals_match"]:
         findings.append({"severity": "block", "code": "independent_check_failed"})
-    if form_field_draft and form_field_draft["mapping_complete"]:
+    if form_field_draft and form_field_draft["calculation_complete"]:
         independent_form = _independent_form_check(
-            records, form_version, form_field_draft
+            records,
+            form_version,
+            form_field_draft,
+            invoice_data_complete=invoice_data_complete,
+            supplemental_form_inputs=supplemental_form_inputs,
         )
         form_field_draft["independent_check"] = independent_form
         if independent_form["status"] == "fail":
@@ -1289,14 +1552,14 @@ def build_draft(
     elif form_field_draft:
         form_field_draft["independent_check"] = {
             "status": "review_required",
-            "reason": "form mapping is incomplete or contains invalid lines",
+            "reason": "invoice mapping, data coverage, external inputs, or applicability need review",
         }
     blocking = [item for item in findings if item["severity"] == "block"]
     if blocking:
         draft_status = "blocked_review_required"
     elif not form_field_draft:
         draft_status = "draft_ready_unmapped"
-    elif form_field_draft["mapping_complete"]:
+    elif form_field_draft["calculation_complete"]:
         draft_status = "draft_ready_for_review"
     else:
         draft_status = "draft_ready_partial_form"
@@ -1336,8 +1599,14 @@ def build_draft(
                 "step": "legal_review",
                 "owner_roles": ["PL01", "PL02", "PL03", "PL04"],
                 "reuses_skill": "accounting-law-watch",
-                "status": law_watch_review["status"]
-                if law_watch_review
+                "status": "pass"
+                if form_version
+                and law_watch_review
+                and law_watch_review["status"] == "pass"
+                and applicability_review
+                and applicability_review["status"] == "pass"
+                else "blocked"
+                if form_version
                 else "not_run; required before selecting a form version",
             },
             {
@@ -1352,7 +1621,7 @@ def build_draft(
                 "step": "prepare_draft",
                 "owner_roles": ["BM01", "BM03"],
                 "status": "prepared_for_review"
-                if form_field_draft and form_field_draft["mapping_complete"]
+                if form_field_draft and form_field_draft["calculation_complete"]
                 else "partial_or_unmapped",
             },
             {
@@ -1384,7 +1653,9 @@ def build_draft(
             "form_number": "01/GTGT" if form_field_draft else None,
             "candidate_form_number": "01/GTGT",
             "version": form_version,
-            "status": "EXPLICIT_VERSION_SELECTED; HUMAN_PERIOD_AND_TAXPAYER_REVIEW_REQUIRED"
+            "status": "APPLICABILITY_AND_LAW_REVIEW_PASS_FOR_INTERNAL_DRAFT"
+            if form_version and not form_review_failures
+            else "BLOCKED_APPLICABILITY_OR_LEGAL_REVIEW"
             if form_version
             else "OFFICIAL_FORM_SOURCE_VERIFIED; PERIOD_AND_FIELD_EXPORT_MAPPING_REQUIRE_REVIEW",
             "verified_versions": [
@@ -1392,7 +1663,7 @@ def build_draft(
                     "instrument": "80/2021/TT-BTC",
                     "annex": "II",
                     "period_candidate": "before 2026-07-01",
-                    "status": "official form and relevant address amendments identified; tax-period applicability requires review",
+                    "status": "official form identified; TT40 address change and TT94 full text reviewed; TT94 makes no 01/GTGT field or formula change",
                 },
                 {
                     "instrument": "89/2026/TT-BTC",
@@ -1405,12 +1676,13 @@ def build_draft(
             "auto_form_selection": False,
             "selected_version_by": "user_cli_option" if form_version else None,
             "law_watch_review": law_watch_review,
+            "applicability_review": applicability_review,
             "field_mapping_status": form_field_draft["mapping_status"]
             if form_field_draft
             else "NOT_STARTED",
             "xml_export": "NOT_STARTED_SCHEMA_NOT_VERIFIED",
             "submission_ready": False,
-            "note": "Bản JSON/XLSX chỉ là tài liệu soát xét nội bộ, không phải tờ khai pháp định. Mẫu được chọn tường minh qua CLI; người dùng vẫn phải xác nhận kỳ áp dụng, phân loại từng dòng, dữ liệu ngoài hóa đơn, phụ lục và điều kiện kê khai. Chưa điền mẫu XLSX chính thức hoặc lập XML.",
+            "note": "Bản JSON/XLSX chỉ là tài liệu soát xét nội bộ, không phải tờ khai pháp định. Phiên bản chỉ được dùng sau khi kỳ, phạm vi người nộp thuế, loại hồ sơ và nguồn pháp luật đều vượt kiểm tra; từng dòng vẫn cần phân loại, dữ liệu ngoài hóa đơn cần kèm nguồn. Chưa điền mẫu XLSX chính thức hoặc lập XML.",
         },
         "totals": totals,
         "independent_check": independent,
@@ -1707,6 +1979,27 @@ def _build_parser() -> argparse.ArgumentParser:
         "--law-watch-report",
         help="JSON report từ accounting-law-watch; bắt buộc khi chọn phiên bản mẫu.",
     )
+    parser.add_argument(
+        "--taxpayer-case",
+        choices=("unconfirmed", "credit_method_production_business"),
+        default="unconfirmed",
+        help="Xác nhận người nộp thuế thuộc phạm vi mẫu 01/GTGT.",
+    )
+    parser.add_argument(
+        "--filing-type",
+        choices=("unconfirmed", "first", "supplementary"),
+        default="unconfirmed",
+        help="Hồ sơ bổ sung bị chặn cho đến khi có quy trình 01/KHBS được xác minh.",
+    )
+    parser.add_argument(
+        "--invoice-data-complete",
+        action="store_true",
+        help="Xác nhận tệp hóa đơn bao phủ đầy đủ kỳ; chỉ khi có cờ này mới điền 0 cho dòng trống.",
+    )
+    parser.add_argument(
+        "--supplemental-form-inputs",
+        help="Tệp JSON {mã_chỉ_tiêu: {amount, source}} cho dữ liệu ngoài hóa đơn; không tự điền 0.",
+    )
     parser.add_argument("--sheet", help="Tên sheet đầu vào .xlsx.")
     parser.add_argument(
         "--header-row",
@@ -1733,6 +2026,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if input_path.exists() and output_path.resolve() == input_path.resolve():
             raise VatDraftError("Đường dẫn xuất không được ghi đè tệp nguồn.")
+        supplemental_form_inputs = None
+        if args.supplemental_form_inputs:
+            try:
+                supplemental_form_inputs = json.loads(
+                    Path(args.supplemental_form_inputs).read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError) as exc:
+                raise VatDraftError(
+                    "Không đọc được tệp JSON dữ liệu bổ sung cho tờ khai."
+                ) from exc
         draft = build_draft(
             input_path,
             args.taxpayer_tax_id,
@@ -1741,6 +2044,10 @@ def main(argv: list[str] | None = None) -> int:
             header_row=args.header_row,
             form_version=args.form_version,
             law_watch_report=args.law_watch_report,
+            taxpayer_case=args.taxpayer_case,
+            filing_type=args.filing_type,
+            invoice_data_complete=args.invoice_data_complete,
+            supplemental_form_inputs=supplemental_form_inputs,
         )
         write_draft(draft, output_path, force=args.force)
         print(
