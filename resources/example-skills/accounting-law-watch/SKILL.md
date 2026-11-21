@@ -8,9 +8,10 @@ description: "Theo dõi văn bản pháp luật kế toán, thuế, hóa đơn v
 ## Phạm vi hiện có
 
 - Nguồn phát hiện văn bản mới vẫn là trang hệ thống văn bản của Cổng Thông tin điện tử Chính phủ: https://vanban.chinhphu.vn/he-thong-van-ban?classid=0&maxresults=50&mode=1 .
-- Các trang Công báo điện tử Chính phủ và một số trang hỗ trợ pháp lý Bộ Tài chính được kiểm tra để xác nhận tham chiếu đã biết. Chúng hiện là nguồn đối chiếu, chưa phải nguồn feed phát hiện thay đổi riêng.
+- Các trang Công báo điện tử Chính phủ, cơ sở dữ liệu văn bản pháp quy của Bộ Tài chính và một số trang hỗ trợ pháp lý Bộ Tài chính được kiểm tra để xác nhận tham chiếu đã biết. Chúng hiện là nguồn đối chiếu, chưa phải nguồn feed phát hiện thay đổi riêng.
 - Registry ghi lại số hiệu đã biết và metadata nguồn để tránh lặp đề xuất. Registry này không chứa công thức kế toán/thuế và không được sửa tự động.
-- TT80/2021, TT40/2025, TT94/2025, TT21/2026, TT89/2026 và QĐ2551/2026 được ghi nhận làm dữ liệu nền liên quan đến rà soát tờ khai GTGT. Chuỗi sửa đổi, phụ lục, phạm vi mẫu và kỳ áp dụng vẫn cần kiểm tra văn bản gốc trước khi duyệt.
+- Luật GTGT 48/2024/QH15, Nghị định 181/2025/NĐ-CP và TT69/2025/TT-BTC là căn cứ GTGT nền được ghi nhận bên cạnh TT80/2021, TT40/2025, TT94/2025, TT21/2026, TT89/2026 và đính chính 2551/QĐ-BTC. Chuỗi sửa đổi, phụ lục, phạm vi mẫu và kỳ áp dụng vẫn cần kiểm tra văn bản gốc trước khi duyệt.
+- Cơ sở dữ liệu văn bản pháp quy Bộ Tài chính được kiểm tra như nguồn tham chiếu. Nếu máy chủ không phản hồi hoặc trang thay đổi cấu trúc, report phải ghi BLOCKED; điều này không được tính là nguồn đã kiểm chứng hay feed phát hiện mới.
 - Kiểm tra nguồn tham chiếu bổ sung được cấu hình trong `registry.json`; mỗi lần chạy trực tiếp ghi trạng thái PASS/BLOCKED theo nguồn. Kiểm tra truy cập không đồng nghĩa với đã xác minh nội dung pháp lý.
 
 ## Cách chạy

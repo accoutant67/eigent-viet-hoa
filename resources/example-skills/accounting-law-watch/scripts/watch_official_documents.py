@@ -23,6 +23,7 @@ OFFICIAL_HOSTS = frozenset(
         OFFICIAL_HOST,
         "congbao.chinhphu.vn",
         "mof.gov.vn",
+        "vbpq.mof.gov.vn",
         "m-portal.mof.gov.vn",
         "portal.mof.gov.vn",
         "thanhtrabtc.mof.gov.vn",

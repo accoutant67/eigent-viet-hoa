@@ -190,18 +190,38 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertTrue(
             {
+                "vanban_law_vat_48_2024",
+                "vanban_decree_vat_181_2025",
+                "vanban_circular_vat_69_2025",
                 "vanban_tt40_2025_tt80_form_update",
                 "vanban_tt94_2025_tt80_update",
                 "vanban_tt21_2026_tt80_update",
                 "mof_official_answer_tt80_01_gtgt",
+                "mof_vbpq_official_database_guide",
                 "vanban_tt89_2026",
                 "congbao_correction_2551_2026",
             }.issubset(names)
         )
         documents = {item["citation"]: item for item in data["known_documents"]}
+        self.assertEqual(documents["48/2024/QH15"]["effective_from"], "2025-07-01")
+        self.assertEqual(documents["181/2025/NĐ-CP"]["effective_from"], "2025-07-01")
+        self.assertEqual(documents["69/2025/TT-BTC"]["effective_from"], "2025-07-01")
         self.assertIn("01_GTGT", documents["89/2026/TT-BTC"]["period_scope_status"])
         self.assertIn(
             "human_review", documents["21/2026/TT-BTC"]["period_scope_status"]
+        )
+
+    def test_finance_ministry_legal_database_host_is_allowlisted_over_https(
+        self,
+    ) -> None:
+        source = next(
+            item
+            for item in registry()["source_checks"]
+            if item["name"] == "mof_vbpq_official_database_guide"
+        )
+        self.assertEqual(
+            watch.official_url(source["url"]),
+            "https://vbpq.mof.gov.vn/Huongdankhaithac",
         )
 
     def test_official_source_redirect_cannot_leave_the_allowlisted_host(self) -> None:

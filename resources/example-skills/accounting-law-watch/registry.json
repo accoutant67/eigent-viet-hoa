@@ -10,6 +10,27 @@
       "period_scope_status": "amendment_chain_requires_period_review"
     },
     {
+      "citation": "48/2024/QH15",
+      "source_url": "https://vanban.chinhphu.vn/default.aspx?docid=212476&pageid=27160",
+      "issued_on": "2024-11-26",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "foundational_vat_law; subsequent_amendments_and_taxpayer_scope_require_period_review"
+    },
+    {
+      "citation": "181/2025/NĐ-CP",
+      "source_url": "https://vanban.chinhphu.vn/?docid=214336&pageid=27160",
+      "issued_on": "2025-07-01",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "vat_implementing_decree; current_effect_and_taxpayer_scope_require_period_review"
+    },
+    {
+      "citation": "69/2025/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=214417&pageid=27160",
+      "issued_on": "2025-07-01",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "vat_implementing_circular; current_effect_and_taxpayer_scope_require_period_review"
+    },
+    {
       "citation": "40/2025/TT-BTC",
       "source_url": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
       "issued_on": "2025-06-13",
@@ -59,6 +80,21 @@
       "expected_marker": "80/2021/TT-BTC"
     },
     {
+      "name": "vanban_law_vat_48_2024",
+      "url": "https://vanban.chinhphu.vn/default.aspx?docid=212476&pageid=27160",
+      "expected_marker": "48/2024/QH15"
+    },
+    {
+      "name": "vanban_decree_vat_181_2025",
+      "url": "https://vanban.chinhphu.vn/?docid=214336&pageid=27160",
+      "expected_marker": "181/2025/NĐ-CP"
+    },
+    {
+      "name": "vanban_circular_vat_69_2025",
+      "url": "https://vanban.chinhphu.vn/?docid=214417&pageid=27160",
+      "expected_marker": "69/2025/TT-BTC"
+    },
+    {
       "name": "vanban_tt89_2026",
       "url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
       "expected_marker": "89/2026/TT-BTC"
@@ -92,6 +128,11 @@
       "name": "mof_question_reference_tt89_form_only",
       "url": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/165862",
       "expected_marker": "01/GTGT"
+    },
+    {
+      "name": "mof_vbpq_official_database_guide",
+      "url": "https://vbpq.mof.gov.vn/Huongdankhaithac",
+      "expected_marker": "CSDL văn bản pháp quy ngành Tài chính"
     }
   ],
   "approved_period_metadata": []

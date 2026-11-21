@@ -4,6 +4,7 @@ name: Accounting law watch
   pull_request:
     branches:
       - main
+      - codex/accounting-workbook-audit-mvp
     paths:
       - 'resources/example-skills/accounting-law-watch/**'
       - '.github/workflows/accounting-law-watch.yml'
