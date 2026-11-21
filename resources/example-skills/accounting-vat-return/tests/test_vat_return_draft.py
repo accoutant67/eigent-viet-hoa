@@ -172,28 +172,12 @@ def make_workbook(
 
 
 def write_law_watch_report(path: Path, version: str) -> Path:
-    required_sources = {
-        "80/2021/TT-BTC": [
-            "congbao_tt80_2021",
-            "vanban_tt40_2025_tt80_form_update",
-            "vanban_tt94_2025_tt80_update",
-            "vanban_tt21_2026_tt80_update",
-        ],
-        "89/2026/TT-BTC": [
-            "vanban_law_vat_48_2024",
-            "vanban_decree_vat_181_2025",
-            "vanban_circular_vat_69_2025",
-            "vanban_tt89_2026",
-            "vanban_tt40_2025_tt80_form_update",
-            "vanban_tt94_2025_tt80_update",
-            "vanban_tt21_2026_tt80_update",
-            "congbao_correction_2551_2026",
-            "vanban_tt110_2026",
-            "vanban_law_tax_admin_108_2025",
-            "vanban_decree_invoice_254_2026",
-            "vanban_circular_invoice_91_2026",
-        ],
-    }[version]
+    registry_path = (
+        Path(__file__).resolve().parents[1].parent
+        / "accounting-law-watch"
+        / "registry.json"
+    )
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
     report = {
         "fixture_only": True,
         "checked_at": "2099-01-01T00:00:00+00:00",
@@ -203,7 +187,8 @@ def write_law_watch_report(path: Path, version: str) -> Path:
         "approved_period_metadata_unchanged": True,
         "auto_applied": False,
         "official_reference_checks": [
-            {"name": name, "status": "pass"} for name in required_sources
+            {"name": item["name"], "status": "pass"}
+            for item in registry["source_checks"]
         ],
     }
     path.write_text(json.dumps(report), encoding="utf-8")
@@ -498,6 +483,14 @@ class VatReturnDraftTests(unittest.TestCase):
                 set(version["required_law_watch_sources"]),
                 vat.LAW_WATCH_REQUIRED_SOURCES[instrument],
             )
+        source_windows = {
+            item["source"]: (
+                item["effective_from"],
+                item["effective_through"],
+            )
+            for item in catalog["law_watch_period_source_windows"]
+        }
+        self.assertEqual(source_windows, vat.LAW_WATCH_SOURCE_WINDOWS)
         self.assertEqual(versions["89/2026/TT-BTC"]["annex"], "Phụ lục I")
         self.assertEqual(versions["89/2026/TT-BTC"]["verified_form_page"], 241)
         self.assertIn("32b", versions["89/2026/TT-BTC"]["verified_form_items"])
@@ -560,6 +553,41 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertTrue(
             post_2026_sources.issubset(vat.LAW_WATCH_REQUIRED_SOURCES["89/2026/TT-BTC"])
         )
+
+    def test_law_watch_sources_are_gated_by_period_effective_windows(self) -> None:
+        before_vat_law = vat._required_law_watch_sources(
+            "80/2021/TT-BTC", "2025-Q2"
+        )
+        self.assertNotIn("vanban_law_vat_48_2024", before_vat_law)
+        self.assertNotIn("vanban_vat_resolution_204_2025", before_vat_law)
+
+        after_july = vat._required_law_watch_sources(
+            "80/2021/TT-BTC", "2025-Q3"
+        )
+        self.assertIn("vanban_law_vat_90_2025", after_july)
+        self.assertIn("vanban_vat_resolution_204_2025", after_july)
+        self.assertIn("vanban_vat_decree_174_2025", after_july)
+        self.assertNotIn("vanban_law_vat_149_2025", after_july)
+
+        may = vat._required_law_watch_sources("80/2021/TT-BTC", "2026-05")
+        june = vat._required_law_watch_sources("80/2021/TT-BTC", "2026-06")
+        self.assertIn("vanban_law_vat_09_2026", may)
+        self.assertNotIn("vanban_decree_vat_144_2026", may)
+        self.assertIn("vanban_decree_vat_144_2026", june)
+
+        after_form_change = vat._required_law_watch_sources(
+            "89/2026/TT-BTC", "2026-Q3"
+        )
+        self.assertIn("vanban_tt89_2026", after_form_change)
+        self.assertIn("vanban_decree_vat_144_2026", after_form_change)
+        self.assertIn("vanban_tt110_2026", after_form_change)
+        self.assertIn("congbao_correction_2551_2026", after_form_change)
+
+        following_year = vat._required_law_watch_sources(
+            "89/2026/TT-BTC", "2027-Q1"
+        )
+        self.assertNotIn("vanban_vat_resolution_204_2025", following_year)
+        self.assertNotIn("vanban_vat_decree_174_2025", following_year)
 
     def test_explicit_tt89_lines_keep_categories_distinct_and_recompute_formulas(
         self,

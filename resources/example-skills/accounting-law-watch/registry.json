@@ -99,6 +99,71 @@
       "issued_on": "2025-10-27",
       "effective_from": "2026-01-01",
       "period_scope_status": "verified_from_official_source"
+    },
+    {
+      "citation": "90/2025/QH15",
+      "source_url": "https://vanban.chinhphu.vn/?classid=1&docid=214558&pageid=27160",
+      "issued_on": "2025-06-25",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "official_metadata_checked; amends_VAT_law_48; full_taxpayer_and_01_GTGT_field_impact_requires_human_review"
+    },
+    {
+      "citation": "204/2025/QH15",
+      "source_url": "https://vanban.chinhphu.vn/?classid=1&docid=214209&orggroupid=1&pageid=27160",
+      "issued_on": "2025-06-17",
+      "effective_from": "2025-07-01",
+      "effective_through": "2026-12-31",
+      "period_scope_status": "official_metadata_checked; temporary_VAT_reduction_window_ends_2026-12-31; product_scope_and_invoice_rate_application_require_human_review"
+    },
+    {
+      "citation": "174/2025/NĐ-CP",
+      "source_url": "https://vanban.chinhphu.vn/?classid=0&docid=214310&pageid=27160",
+      "issued_on": "2025-06-30",
+      "effective_from": "2025-07-01",
+      "effective_through": "2026-12-31",
+      "period_scope_status": "official_metadata_checked; implements_resolution_204_2025; product_scope_and_invoice_rate_application_require_human_review"
+    },
+    {
+      "citation": "149/2025/QH15",
+      "source_url": "https://vanban.chinhphu.vn/?classid=1&docid=216588&pageid=27160&typegroupid=3",
+      "issued_on": "2025-12-11",
+      "effective_from": "2026-01-01",
+      "period_scope_status": "official_metadata_checked; amends_VAT_law_48; full_applicability_and_01_GTGT_field_impact_require_human_review"
+    },
+    {
+      "citation": "359/2025/NĐ-CP",
+      "source_url": "https://vanban.chinhphu.vn/?classid=1&docid=216388&orggroupid=2&pageid=27160",
+      "issued_on": "2025-12-31",
+      "effective_from": "2026-01-01",
+      "period_scope_status": "official_metadata_checked; amends_VAT_decree_181; detailed_transition_and_01_GTGT_field_impact_require_human_review"
+    },
+    {
+      "citation": "09/2026/QH16",
+      "source_url": "https://vanban.chinhphu.vn/?docid=218095&pageid=27160",
+      "issued_on": "2026-04-24",
+      "effective_from": "2026-04-24",
+      "period_scope_status": "official_metadata_checked; amends_VAT_and_other_tax_laws; provision_specific_effect_and_01_GTGT_field_impact_require_human_review"
+    },
+    {
+      "citation": "144/2026/NĐ-CP",
+      "source_url": "https://vanban.chinhphu.vn/?docid=218020&pageid=27160",
+      "issued_on": "2026-05-05",
+      "effective_from": "2026-06-20",
+      "period_scope_status": "official_metadata_checked; amends_decree_181_as_amended_by_359; detailed_scope_and_01_GTGT_field_impact_require_human_review"
+    },
+    {
+      "citation": "12/VBHN-VPQH",
+      "source_url": "https://vanban.chinhphu.vn/?docid=216941&pageid=27160",
+      "issued_on": "2026-02-06",
+      "effective_from": null,
+      "period_scope_status": "official_consolidation_metadata_checked; reference_only; date_precedes_law_09_2026; do_not_treat_as_latest_consolidated_text"
+    },
+    {
+      "citation": "03/VBHN-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?classid=0&docid=217009&pageid=27160",
+      "issued_on": "2026-02-12",
+      "effective_from": null,
+      "period_scope_status": "official_consolidation_metadata_checked; reference_only_and_predates_decree_144; do_not_treat_as_latest_consolidated_text"
     }
   ],
   "source_checks": [
@@ -171,6 +236,51 @@
       "name": "mof_vbpq_official_database_guide",
       "url": "https://vbpq.mof.gov.vn/Huongdankhaithac",
       "expected_marker": "CSDL văn bản pháp quy ngành Tài chính"
+    },
+    {
+      "name": "vanban_law_vat_90_2025",
+      "url": "https://vanban.chinhphu.vn/?classid=1&docid=214558&pageid=27160",
+      "expected_marker": "90/2025/QH15"
+    },
+    {
+      "name": "vanban_vat_resolution_204_2025",
+      "url": "https://vanban.chinhphu.vn/?classid=1&docid=214209&orggroupid=1&pageid=27160",
+      "expected_marker": "204/2025/QH15"
+    },
+    {
+      "name": "vanban_vat_decree_174_2025",
+      "url": "https://vanban.chinhphu.vn/?classid=0&docid=214310&pageid=27160",
+      "expected_marker": "174/2025/NĐ-CP"
+    },
+    {
+      "name": "vanban_law_vat_149_2025",
+      "url": "https://vanban.chinhphu.vn/?classid=1&docid=216588&pageid=27160&typegroupid=3",
+      "expected_marker": "149/2025/QH15"
+    },
+    {
+      "name": "vanban_decree_vat_359_2025",
+      "url": "https://vanban.chinhphu.vn/?classid=1&docid=216388&orggroupid=2&pageid=27160",
+      "expected_marker": "359/2025/NĐ-CP"
+    },
+    {
+      "name": "vanban_law_vat_09_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=218095&pageid=27160",
+      "expected_marker": "09/2026/QH16"
+    },
+    {
+      "name": "vanban_decree_vat_144_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=218020&pageid=27160",
+      "expected_marker": "144/2026/NĐ-CP"
+    },
+    {
+      "name": "vanban_consolidated_vat_law_12_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=216941&pageid=27160",
+      "expected_marker": "12/VBHN-VPQH"
+    },
+    {
+      "name": "vanban_consolidated_vat_decree_03_2026",
+      "url": "https://vanban.chinhphu.vn/?classid=0&docid=217009&pageid=27160",
+      "expected_marker": "03/VBHN-BTC"
     }
   ],
   "approved_period_metadata": []
