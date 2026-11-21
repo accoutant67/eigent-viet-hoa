@@ -46,7 +46,6 @@ Workflow `Test` kiểm tra Python, frontend guardrails, i18n, ChatBox rollback, 
 
 Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI hoặc mở giao diện Kế toán; các ca GUI tương ứng là BLOCKED. Bộ kiểm thử hiện tại không chứng minh workbook được xuất và giữ định dạng, hóa đơn/tờ khai/BCTC đúng nghiệp vụ, XML hợp lệ theo schema đã xác minh, hoặc nguồn pháp luật/biểu mẫu đúng phiên bản. Những module chưa triển khai ở trên phải tiếp tục ghi NOT STARTED cho đến khi có code và bằng chứng smoke thực tế.
 
-
 ## Báo cáo cập nhật: theo dõi văn bản pháp luật và regression — 21/11/2026
 
 ### Commit và môi trường
@@ -69,6 +68,7 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - **Python backend regression — PASS:** `cd backend && uv run pytest tests/app -v`; **4.594 passed, 11 skipped, 110 warnings, 11 subtests** trong 473,79 giây.
 - **Electron/web — PASS:** web/local brain HTTP smoke, Electron preview browser và stream relay đều thành công. Đây là smoke tự động, không chứng minh menu hoặc giao diện đã hoạt động khi thao tác trực tiếp.
 - **Pre-commit/Markdown lint/CodeQL — PASS** trên commit `e97ca21`.
+- Báo cáo ở commit `6294d19` có lần Markdown lint fail (run 44861071917): MD012 do một dòng trống thừa và MD047 do thiếu newline cuối tệp. Đã sửa cả hai trong cập nhật tài liệu tiếp theo; kiểm tra Markdown được chạy lại trên head mới.
 
 ### Lỗi, cách sửa và kiểm thử lại
 
