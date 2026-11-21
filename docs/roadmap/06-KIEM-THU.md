@@ -55,6 +55,12 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - **Môi trường:** GitHub Actions hosted Ubuntu; Python 3.11.18. Electron preview chạy trong Xvfb. Môi trường không có cửa sổ Eigent/model hợp lệ để thao tác GUI.
 - **Bằng chứng Actions:** [Test 44860014627](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014627), [Accounting law watch 44860014692](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014692), [Accounting workbook audit 44860014640](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014640), [Pre-commit 44860014704](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014704), [Markdown lint 44860014636](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014636), [CodeQL 44860014705](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014705).
 
+### Retest phần báo cáo sau khi sửa
+
+- **Commit tài liệu-only được kiểm thử:** `ded62debc9ec4465d8e2db4cf09f023b9b64056c`; không thay đổi mã tính năng. Toàn bộ workflow đều PASS trên head này: [Test 44861247129](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247129), [law watch 44861247073](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247073), [Excel audit 44861247096](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247096), [Pre-commit 44861247083](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247083), [Markdown lint 44861247077](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247077), [CodeQL 44861247085](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247085).
+- Trên head này, backend đạt **4.594 passed, 11 skipped, 111 warnings, 11 subtests**; ChatBox **1.113/1.113**; i18n, HTTP/web smoke, Electron preview, law-watch và Excel regression đều PASS.
+- Markdown lint xác nhận bản sửa MD012/MD047 PASS. Report lấy log đầy đủ của code head `e97ca21`; lượt `ded62de` xác nhận lại sau cập nhật tài liệu.
+
 ### Smoke và regression đã chạy
 
 - **Skill API — PASS:** `bash scripts/smoke-web-local-brain.sh`. Backend health/session/capabilities và `/skills` hoạt động; API nhận diện đúng hai Skill `accounting-workbook-audit` và `accounting-law-watch`, mỗi Skill đúng một lần, liệt kê đúng `SKILL.md` và CLI; Vite trả HTML cho trang gốc và route.
@@ -68,7 +74,7 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - **Python backend regression — PASS:** `cd backend && uv run pytest tests/app -v`; **4.594 passed, 11 skipped, 110 warnings, 11 subtests** trong 473,79 giây.
 - **Electron/web — PASS:** web/local brain HTTP smoke, Electron preview browser và stream relay đều thành công. Đây là smoke tự động, không chứng minh menu hoặc giao diện đã hoạt động khi thao tác trực tiếp.
 - **Pre-commit/Markdown lint/CodeQL — PASS** trên commit `e97ca21`.
-- Báo cáo ở commit `6294d19` có lần Markdown lint fail (run 44861071917): MD012 do một dòng trống thừa và MD047 do thiếu newline cuối tệp. Đã sửa cả hai trong cập nhật tài liệu tiếp theo; kiểm tra Markdown được chạy lại trên head mới.
+- Báo cáo ở commit `6294d19` có lần Markdown lint fail (run 44861071917): MD012 do một dòng trống thừa và MD047 do thiếu newline cuối tệp. Đã sửa cả hai trong cập nhật tài liệu kế tiếp; Markdown lint PASS trên head `ded62de` (run 44861247077).
 
 ### Lỗi, cách sửa và kiểm thử lại
 
