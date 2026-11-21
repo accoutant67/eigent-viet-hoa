@@ -23,6 +23,7 @@ from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+
 from defusedxml import DefusedXmlException
 from defusedxml import ElementTree as ET
 
@@ -1047,7 +1048,7 @@ def _form_field_draft(
             for code, amount in sorted(external_amounts.items())
         },
         "submission_ready": False,
-        "output_type": "internal_json_draft_only",
+        "output_type": "review_only_form_fields_pdf_overlay_supported",
     }
 
 
@@ -1458,6 +1459,7 @@ def build_draft(
     taxpayer_tax_id: str,
     period: str,
     *,
+    taxpayer_name: str | None = None,
     sheet_name: str | None = None,
     header_row: int | None = None,
     form_version: str | None = None,
@@ -1518,7 +1520,7 @@ def build_draft(
             "findings": form_review_failures,
             "external_inputs_not_provided": sorted(FORM_EXTERNAL_INPUTS),
             "submission_ready": False,
-            "output_type": "internal_json_draft_only",
+            "output_type": "review_only_form_fields_pdf_overlay_supported",
         }
     else:
         form_field_draft = _form_field_draft(
@@ -1570,6 +1572,7 @@ def build_draft(
         "source_file": source.name,
         "input_format": source.suffix.casefold().lstrip("."),
         "taxpayer_tax_id": taxpayer_tax_id.strip(),
+        "taxpayer_name": (taxpayer_name or "").strip(),
         "period": {
             "label": period.upper(),
             "type": period_type,
@@ -1628,7 +1631,7 @@ def build_draft(
             {
                 "step": "official_template_copy",
                 "owner_roles": ["BM02"],
-                "status": "NOT_STARTED",
+                "status": "NOT_STARTED_XLSX; review_only_pdf_overlay_supported",
             },
             {
                 "step": "independent_check",
@@ -1640,7 +1643,7 @@ def build_draft(
             {
                 "step": "export",
                 "owner_roles": ["BM03"],
-                "status": "review_only_json_or_internal_xlsx_with_field_draft"
+                "status": "review_only_pdf_overlay_or_json_or_internal_xlsx_with_field_draft"
                 if form_field_draft
                 else "review_only_json_or_internal_xlsx",
             },
@@ -1681,9 +1684,10 @@ def build_draft(
             "field_mapping_status": form_field_draft["mapping_status"]
             if form_field_draft
             else "NOT_STARTED",
+            "pdf_export": "review_only_official_template_overlay_requires_passed_reviews",
             "xml_export": "NOT_STARTED_SCHEMA_NOT_VERIFIED",
             "submission_ready": False,
-            "note": "Bản JSON/XLSX chỉ là tài liệu soát xét nội bộ, không phải tờ khai pháp định. Phiên bản chỉ được dùng sau khi kỳ, phạm vi người nộp thuế, loại hồ sơ và nguồn pháp luật đều vượt kiểm tra; từng dòng vẫn cần phân loại, dữ liệu ngoài hóa đơn cần kèm nguồn. Chưa điền mẫu XLSX chính thức hoặc lập XML.",
+            "note": "PDF chỉ là dự thảo có watermark trên mẫu chính thức; JSON/XLSX là tài liệu soát xét nội bộ. Chỉ tiêu chưa có nguồn giữ trống. Mẫu XLSX pháp định, XML, ký và nộp chưa triển khai.",
         },
         "totals": totals,
         "independent_check": independent,
@@ -1705,8 +1709,8 @@ def write_draft(
 ) -> Path:
     destination = Path(output_path)
     output_format = destination.suffix.casefold()
-    if output_format not in {".json", ".xlsx"}:
-        raise VatDraftError("Chỉ xuất JSON hoặc workbook XLSX soát xét nội bộ.")
+    if output_format not in {".json", ".xlsx", ".pdf"}:
+        raise VatDraftError("Chỉ xuất JSON, XLSX nội bộ hoặc PDF mẫu 01/GTGT.")
     source_name = str(draft.get("source_file", ""))
     if destination.name == source_name and draft.get(
         "input_format"
@@ -1728,10 +1732,20 @@ def write_draft(
             if output_format == ".json":
                 serialized = json.dumps(draft, ensure_ascii=False, indent=2) + "\n"
                 temporary.write(serialized.encode("utf-8"))
-            else:
+            elif output_format == ".xlsx":
                 _write_internal_review_workbook(draft, temporary)
-            temporary.flush()
-            os.fsync(temporary.fileno())
+            else:
+                temporary.close()
+                try:
+                    from vat_return_pdf import write_official_template_pdf
+
+                    write_official_template_pdf(draft, temporary_path)
+                except (ImportError, ValueError) as exc:
+                    raise VatDraftError(str(exc)) from exc
+            if not temporary.closed:
+                temporary.flush()
+            with temporary_path.open("rb+") as written_file:
+                os.fsync(written_file.fileno())
         os.replace(temporary_path, destination)
         return destination
     finally:
@@ -1972,6 +1986,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--taxpayer-tax-id", required=True, help="MST dùng để phân loại bên mua/bán."
     )
     parser.add_argument(
+        "--taxpayer-name",
+        help="Tên người nộp thuế đúng theo hồ sơ; không suy ra từ tên hóa đơn.",
+    )
+    parser.add_argument(
         "--period", required=True, help="Kỳ YYYY-MM hoặc YYYY-Q1..YYYY-Q4."
     )
     parser.add_argument(
@@ -2011,7 +2029,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Số hàng tiêu đề trong Excel; mặc định hàng có dữ liệu đầu tiên.",
     )
     parser.add_argument(
-        "--output", help="Đường dẫn JSON hoặc workbook XLSX soát xét nội bộ."
+        "--output",
+        help="Đường dẫn JSON, XLSX nội bộ hoặc PDF dự thảo mẫu 01/GTGT.",
     )
     parser.add_argument(
         "--force", action="store_true", help="Cho phép ghi đè tệp dự thảo đã có."
@@ -2044,6 +2063,7 @@ def main(argv: list[str] | None = None) -> int:
             input_path,
             args.taxpayer_tax_id,
             args.period,
+            taxpayer_name=args.taxpayer_name,
             sheet_name=args.sheet,
             header_row=args.header_row,
             form_version=args.form_version,

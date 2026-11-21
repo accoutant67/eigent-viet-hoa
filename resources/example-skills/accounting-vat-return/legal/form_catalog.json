@@ -15,7 +15,39 @@
         "official_source": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
         "official_consolidated_form_reference": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-15-vbhn-btc-42004-50395",
         "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
-        "verified_form_items": ["01a", "01b", "11a", "11b", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "33", "34", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_form_items": [
+          "01a",
+          "01b",
+          "11a",
+          "11b",
+          "11c",
+          "23",
+          "23a",
+          "24",
+          "24a",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "32a",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39a",
+          "40a",
+          "40b",
+          "40",
+          "41",
+          "42",
+          "43"
+        ],
         "form_item_inventory_basis": "base form as issued with TT80; apply effective overlays below for the relevant period; no official workbook export is implemented",
         "period_specific_overlays": [
           {
@@ -23,8 +55,27 @@
             "effective_from": "2025-07-01",
             "official_source": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
             "field_changes": [
-              {"field": "11a", "change": "label_updated", "label": "Xã/phường/đặc khu"},
-              {"field": "11b", "change": "removed"}
+              {
+                "field": "11a",
+                "change": "label_updated",
+                "label": "Xã/phường/đặc khu"
+              },
+              {
+                "field": "11b",
+                "change": "removed"
+              },
+              {
+                "field": "01/GTGT notes",
+                "change": "replace_word",
+                "from": "huyện",
+                "to": "Xã/phường/đặc khu"
+              }
+            ],
+            "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2025/7/40-btc.pdf",
+            "official_attachment_sha256": "99e05432e4e93b99b186340e00a000d023d285edb52ad68d465af4a4214dd8f9",
+            "official_amendment_pages": [
+              4,
+              5
             ]
           },
           {
@@ -87,7 +138,40 @@
         "correction_reference": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
         "period_use": "Official Government metadata gives an effective date of 2026-07-01. The signed official attachment was checked directly: Annex I, printed page 241 contains form 01/GTGT, including month/quarter period, field [32b], field [34a], and the updated totals formulas. Use for a tax period only after transition and taxpayer-case review; no automatic selection.",
         "verified_form_page": 241,
-        "verified_form_items": ["01a", "01b", "11a", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "32b", "33", "34", "34a", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_form_items": [
+          "01a",
+          "01b",
+          "11a",
+          "11c",
+          "23",
+          "23a",
+          "24",
+          "24a",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29",
+          "30",
+          "31",
+          "32",
+          "32a",
+          "32b",
+          "33",
+          "34",
+          "34a",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39a",
+          "40a",
+          "40b",
+          "40",
+          "41",
+          "42",
+          "43"
+        ],
         "verified_purchase_field_relationships": {
           "source": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
           "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
@@ -123,7 +207,12 @@
             "basis": "Official 01/GTGT form: [41] is the expression when the result is <= 0."
           }
         },
-        "verified_form_constraints": ["40a >= 0", "40b <= 40a", "42 <= 41", "41 <= 0"],
+        "verified_form_constraints": [
+          "40a >= 0",
+          "40b <= 40a",
+          "42 <= 41",
+          "41 <= 0"
+        ],
         "official_attachment_checked": true
       }
     ],
@@ -169,16 +258,206 @@
     "related_annexes": {
       "status": "official_inventory_identified_applicability_review_required",
       "official_forms_in_tt89_annex_i": [
-        {"form_number": "01-2/GTGT", "scope": "VAT allocation for hydropower activities"},
-        {"form_number": "01-3/GTGT", "scope": "VAT allocation for digital lottery activities"},
-        {"form_number": "01-6/GTGT", "scope": "VAT allocation for activities other than hydropower and digital lottery"},
-        {"form_number": "01-7/GTGT", "scope": "Input VAT allocation to telecom business branches"},
-        {"form_number": "01-8/GTGT", "scope": "VAT refund information; attached to 01/GTGT or 02/GTGT as applicable"}
+        {
+          "form_number": "01-2/GTGT",
+          "scope": "VAT allocation for hydropower activities"
+        },
+        {
+          "form_number": "01-3/GTGT",
+          "scope": "VAT allocation for digital lottery activities"
+        },
+        {
+          "form_number": "01-6/GTGT",
+          "scope": "VAT allocation for activities other than hydropower and digital lottery"
+        },
+        {
+          "form_number": "01-7/GTGT",
+          "scope": "Input VAT allocation to telecom business branches"
+        },
+        {
+          "form_number": "01-8/GTGT",
+          "scope": "VAT refund information; attached to 01/GTGT or 02/GTGT as applicable"
+        }
       ],
       "note": "Official Annex I form inventory was checked. Whether a taxpayer must use an annex depends on the taxpayer's activity, locations, investment/refund facts and applicable period; no annex is selected automatically. Field mapping for these annexes is NOT STARTED."
     },
     "xlsx_template_mapping": "NOT_STARTED",
     "xml_schema": "NOT_STARTED_NOT_VERIFIED",
-    "auto_form_selection": false
+    "auto_form_selection": false,
+    "official_template_pdf_export": {
+      "status": "implemented_draft_overlay_only",
+      "available_form_versions": [
+        "80/2021/TT-BTC",
+        "89/2026/TT-BTC"
+      ],
+      "source_templates": {
+        "80/2021/TT-BTC": {
+          "official_source": "https://congbao.cdnchinhphu.vn/CongBaoCP/VanBan/2021/9/34774/37499-1-2021969-97080-2021-tt-btc.pdf",
+          "printed_pages": [
+            19,
+            20
+          ],
+          "file": "templates/tt80-01-gtgt-template.pdf",
+          "sha256": "ee53c7d01ddd56f91266bafb1d1e07a40370b747aa1a97c4406144856dfe20e1",
+          "period_layouts": [
+            {
+              "effective_from": "2022-01-01",
+              "effective_through": "2025-06-30",
+              "layout": "TT80 original address line"
+            },
+            {
+              "effective_from": "2025-07-01",
+              "effective_through": "2026-06-30",
+              "layout": "TT80 with TT40: [11a] relabeled, [11b] removed, and the [09]/[10]/[11] note updated",
+              "official_amendment_source": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2025/7/40-btc.pdf"
+            }
+          ]
+        },
+        "89/2026/TT-BTC": {
+          "official_source": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
+          "printed_pages": [
+            241,
+            242
+          ],
+          "file": "templates/tt89-01-gtgt-template.pdf",
+          "sha256": "9c07851230d6f8fa385bcb4554a5f2d7d2cf910d61498ce7ace74df56de36da5",
+          "effective_from": "2026-07-01"
+        }
+      },
+      "font": {
+        "file": "templates/NotoSans-Regular.ttf",
+        "license_file": "templates/NotoSans-LICENSE.txt",
+        "license": "SIL Open Font License 1.1",
+        "sha256": "89c3c497f618fdaa0b2d1e98fef93582f28c71debd2c4a8cdf41f190ced2909d"
+      },
+      "header_field_mapping": {
+        "01b": {
+          "source": "--period",
+          "type": "tax_period",
+          "rule": "YYYY-MM or YYYY-Q1..YYYY-Q4"
+        },
+        "02": {
+          "source": "--filing-type",
+          "type": "checkbox",
+          "rule": "mark only after explicit first-filing confirmation"
+        },
+        "04": {
+          "source": "--taxpayer-name",
+          "type": "text",
+          "rule": "explicit input only; never inferred from invoice names"
+        },
+        "05": {
+          "source": "--taxpayer-tax-id",
+          "type": "tax_id",
+          "rule": "explicit input only; digits placed in the verified template field"
+        }
+      },
+      "amount_field_mapping": {
+        "source": "form_field_draft.amounts[form_code]",
+        "data_type": "exact_money_text; no rounding",
+        "empty_or_missing": "leave_blank",
+        "value_column_codes": [
+          "23",
+          "23a",
+          "26",
+          "27",
+          "29",
+          "30",
+          "32",
+          "32a",
+          "32b",
+          "34a",
+          "34"
+        ],
+        "vat_column_codes": [
+          "22",
+          "24",
+          "24a",
+          "25",
+          "28",
+          "31",
+          "33",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39a",
+          "40a",
+          "40b",
+          "40",
+          "41",
+          "42",
+          "43"
+        ],
+        "tt80_page_by_code": {
+          "23": 1,
+          "23a": 1,
+          "26": 1,
+          "27": 1,
+          "29": 1,
+          "30": 1,
+          "32": 1,
+          "32a": 1,
+          "34": 1,
+          "22": 1,
+          "24": 1,
+          "24a": 1,
+          "25": 1,
+          "28": 1,
+          "31": 1,
+          "33": 1,
+          "35": 1,
+          "36": 1,
+          "37": 2,
+          "38": 2,
+          "39a": 2,
+          "40a": 2,
+          "40b": 2,
+          "40": 2,
+          "41": 2,
+          "42": 2,
+          "43": 2
+        },
+        "tt89_page_by_code": {
+          "23": 1,
+          "23a": 1,
+          "26": 1,
+          "27": 1,
+          "29": 1,
+          "30": 1,
+          "32": 1,
+          "32a": 1,
+          "32b": 1,
+          "34a": 1,
+          "34": 1,
+          "22": 1,
+          "24": 1,
+          "24a": 1,
+          "25": 1,
+          "28": 1,
+          "31": 1,
+          "33": 1,
+          "35": 1,
+          "36": 1,
+          "37": 1,
+          "38": 1,
+          "39a": 1,
+          "40a": 1,
+          "40b": 2,
+          "40": 2,
+          "41": 2,
+          "42": 2,
+          "43": 2
+        },
+        "excluded_code": "21 (no-activity checkbox is not generated by the current invoice workflow)"
+      },
+      "safety": {
+        "watermark": "DỰ THẢO — CHƯA KÝ — CHƯA NỘP",
+        "blocked_when": "any hard finding exists or applicability/legal review does not pass",
+        "submission_ready": false,
+        "xml_schema": "NOT_STARTED_NOT_VERIFIED",
+        "signing_or_submission": "not_supported"
+      }
+    }
   }
 }
