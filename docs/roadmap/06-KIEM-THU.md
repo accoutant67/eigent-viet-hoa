@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 11889)
+Total output lines: 200
+
 # Kế hoạch và kết quả kiểm thử
 
 ## Quy tắc smoke và regression cho cả 5 giai đoạn
@@ -74,47 +77,7 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - **Python backend regression — PASS:** `cd backend && uv run pytest tests/app -v`; **4.594 passed, 11 skipped, 110 warnings, 11 subtests** trong 473,79 giây.
 - **Electron/web — PASS:** web/local brain HTTP smoke, Electron preview browser và stream relay đều thành công. Đây là smoke tự động, không chứng minh menu hoặc giao diện đã hoạt động khi thao tác trực tiếp.
 - **Pre-commit/Markdown lint/CodeQL — PASS** trên commit `e97ca21`.
-- Báo cáo ở commit `6294d19` có lần Markdown lint fail (run 44861071917): MD012 do một dòng trống thừa và MD047 do thiếu newline cuối tệp. Đã sửa cả hai trong cập nhật tài liệu kế tiếp; Markdown lint PASS trên head `ded62de` (run 44861247077).
-
-### Lỗi, cách sửa và kiểm thử lại
-
-- Pre-commit trên commit triển khai đầu `7ad6cbef2787398a411aeb00268744cfc2195008` fail vì Ruff formatter chỉnh khoảng trắng và xuống dòng trong test tích hợp. Không có lỗi lint hoặc lỗi logic kèm theo. Đã áp dụng đúng format trong commit `e97ca21038c64d802e74a517528c483376c182fd`; Pre-commit run 44860014704 PASS, cùng smoke và regression trên head mới PASS.
-- Smoke log có một số `curl: (7)` khi backend/Vite chưa mở cổng; script chờ dịch vụ, sau đó báo PASS. Có cảnh báo deprecation `i18next-parser`, Node `punycode` và PostCSS; các bước kết thúc PASS, không có lỗi chưa khắc phục.
-- ChatBox từng có một assertion fail trên `main` trước PR (run 44774491335); nguyên nhân và cách sửa test đã ghi ở phần trên. Trên head hiện hành, rollback ChatBox PASS 1.113/1.113.
-
-### Chức năng chưa thể kiểm tra hoặc chưa triển khai
-
-- **BLOCKED:** mở menu chính/menu con, đổi tiếng Việt bằng GUI, gửi câu hỏi Chat AI với model hợp lệ, mở giao diện Kế toán. Không có cửa sổ ứng dụng/model kiểm thử; Electron preview và unit test không được dùng thay bằng chứng GUI.
-- **NOT STARTED:** nguồn Bộ Tài chính, cơ quan thuế và BHXH ngoài cổng Chính phủ; xác minh điều khoản chuyển tiếp/phạm vi kỳ của từng văn bản; đề xuất PR cập nhật biểu mẫu sau khi có người duyệt; lịch chạy theo sự kiện schedule chưa được chờ tới trong lượt này.
-- **NOT STARTED:** xuất/nhập workbook giữ định dạng, kiểm hóa đơn, tờ khai GTGT tháng/quý, TNCN quý, TNDN tạm nộp, bộ BCTC và XML theo schema đã xác minh. Skill Excel hiện tại chỉ đọc và báo cáo; không khẳng định các module trên đã PASS.
-- Registry không chứa công thức được tự cập nhật. Kỳ áp dụng của văn bản mới vẫn để `needs_human_review`; test bảo toàn quy tắc kỳ cũ dùng dữ liệu fixture.
-
-## Báo cáo kiểm thử cập nhật — 21/11/2026
-
-### Commit và môi trường
-
-- Mã nguồn VAT được kiểm thử: `42e61a0f57f4432463d58f422982c413ec64fb04`, nhánh `codex/vat-return-mvp`, PR #2, vẫn draft/open. PR #1 giữ nguyên head `59ec94593e81f21142c5aa76cdf4c9c136b078c2`, draft/open, chưa merge.
-- GitHub Actions: Ubuntu 26 runner; Python 3.11.18 cho VAT workflow. Backend full suite dùng môi trường Python 3.11; frontend guardrails/ChatBox chạy trên Node 20.
-- Cục bộ: Linux workspace, backend `uv` Python 3.11.11; Python hệ thống 3.12.14. Lệnh kiểm tra VAT, smoke CLI và biên dịch đều chạy bằng `uv --project backend`.
-- Báo cáo này ghi kết quả của mã nguồn tại commit nêu trên. Các cập nhật sau đó chỉ thay nội dung tài liệu và mô tả PR.
-
-### Lỗi, sửa và kiểm thử lại
-
-- Trên commit `1115f598ffc17867d4704cf1811cf19e83790dfd`, VAT CI thất bại ở 5/25 test. Log: `xml.etree.ElementTree.ParseError: duplicate attribute` trong `xl/workbook.xml` của workbook tổng hợp dùng làm fixture.
-- Nguyên nhân: fixture khai báo namespace `r` tường minh đồng thời ElementTree tự khai báo namespace cho thuộc tính quan hệ. Python 3.11.18 trên runner từ chối XML; Python 3.11.11 cục bộ chấp nhận.
-- Sửa tại `42e61a0`: bỏ khai báo namespace dư trong fixture. Không thay đổi mã xử lý nghiệp vụ.
-- Kiểm thử lại cục bộ: VAT **25/25 PASS**, `smoke_cli.py` PASS, `py_compile` PASS, `git diff --check` PASS.
-- CI sau sửa: VAT workflow, Skill integration và toàn bộ Test workflow đều PASS; chi tiết bên dưới.
-
-### Kết quả kiểm thử
-
-| Nhóm                   | Lệnh / workflow                                                                                                                                                                                                                                                                                                                | Kết quả                                                                                                                                                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| VAT unit | `uv run --python 3.11 --with 'defusedxml>=0.7.1' --with 'openpyxl>=3.1.5' --with 'pypdf>=5.9.0,<7' --with 'reportlab>=4.4.0,<5' python -m unittest discover -s resources/example-skills/accounting-vat-return/tests -p 'test_*.py' -v` | **PASS 39/39**; gồm input, ánh xạ, công thức, review gate, PDF TT80/TT89 và kỳ tháng/quý. |
-| VAT smoke | `uv run --python 3.11 --with 'defusedxml>=0.7.1' --with 'openpyxl>=3.1.5' --with 'pypdf>=5.9.0,<7' --with 'reportlab>=4.4.0,<5' python resources/example-skills/accounting-vat-return/tests/smoke_cli.py` | **PASS**; TT80 Q4/2025 và TT89 Q3/2026 tạo JSON, XLSX nội bộ và PDF watermark. XML/schema **NOT STARTED**. |
-| Đọc workbook đầu ra    | `openpyxl.load_workbook(..., read_only=True, data_only=False)` trong test                                                                                                                                                                                                                                                      | **PASS**: bốn sheet đúng, mã hóa đơn `00017` giữ nguyên, không có công thức; workbook nguồn không đổi; ngăn ghi đè nguồn.                                                                                                    |
-| VAT Skill trong Eigent | `uv run pytest tests/app/service/test_accounting_vat_skill_integration.py -v`                                                                                                                                                                                                                                                  | **PASS 1/1**: Skill được phát hiện một lần và quyền được giới hạn; 14 vai trò không bị đăng ký thành Agent trùng.                                                                                                            |
-| Law-watch              | `python -m unittest discover -s resources/example-skills/accounting-law-watch/tests -p 'test_*.py' -v`                                                                                                                                                                                                                         | **PASS 16/16**: fixture cũ/mới, ngày ban hành/hiệu lực và kỳ, đề xuất, phân quyền nguồn và publish mock.                                                                                                                     |
+- Báo cáo ở commit `6294d19` có lần Markdown lint fail (run 44861071917): MD012 do một dòng trống thừa và MD047 do thiếu newline cuối tệp. Đ…1889 tokens truncated…                     |
 | Law-watch smoke/live   | `watch_official_documents.py --check-source`; `smoke_cli.py`; publisher `--dry-run`                                                                                                                                                                                                                                            | **PASS**: đọc 50 mục Chính phủ; fixture phát hiện một đề xuất; không có văn bản mới ở lần live check, không tạo Issue, không đổi registry, `auto_applied=false`. Job publisher được skip vì danh sách live không có đề xuất. |
 | Nguồn luật bắt buộc    | Trường `official_reference_checks` trong report live                                                                                                                                                                                                                                                                           | **10/11 PASS; 1 BLOCKED**: trang hướng dẫn cơ sở dữ liệu Bộ Tài chính `vbpq.mof.gov.vn/Huongdankhaithac` trả `URLError`. Không coi nguồn bị chặn là đã xác minh.                                                             |
 | Excel audit regression | `python -m unittest discover -s resources/example-skills/accounting-workbook-audit/tests -p 'test_*.py' -v`; `smoke_cli.py`                                                                                                                                                                                                    | **PASS 8/8** và smoke PASS; source workbook được bảo toàn.                                                                                                                                                                   |
@@ -180,7 +143,7 @@ Lần smoke đầu cho TT80 Q4/2025 dừng ở assertion vì fixture law-watch t
 
 ### Kiểm thử tiếp theo: PDF mẫu 01/GTGT (21/11/2026)
 
-Nhánh `codex/vat-official-form-draft` nối sau PR #3. Mẫu TT80 trích từ Phụ lục II, trang Công báo 19–20; PDF TT40/2025 chính thức xác nhận cập nhật nhãn [11a], bỏ [11b] và thay cụm “huyện” trong phần ghi chú bằng “Xã/phường/đặc khu”. Mẫu TT89 lấy từ Phụ lục I, trang PDF 241–242. Đã render và rà trực quan các đầu ra giả lập cho TT80 Q3/2025 và TT89 tháng 07/2026.
+Nhánh `codex/vat-official-form-draft` là PR #5 draft/open, nối sau PR #3; PR #4 là nhánh nguồn pháp luật 2026 riêng, cũng đang draft/open sau PR #3. Mẫu TT80 trích từ Phụ lục II, trang Công báo 19–20; PDF TT40/2025 chính thức xác nhận cập nhật nhãn [11a], bỏ [11b] và thay cụm “huyện” trong phần ghi chú bằng “Xã/phường/đặc khu”. Mẫu TT89 lấy từ Phụ lục I, trang PDF 241–242. Đã render và rà trực quan các đầu ra giả lập cho TT80 Q3/2025 và TT89 tháng 07/2026.
 
 | Kiểm tra | Kết quả |
 | --- | --- |
@@ -191,7 +154,7 @@ Nhánh `codex/vat-official-form-draft` nối sau PR #3. Mẫu TT80 trích từ P
 | Eigent Skill integration | **PASS 1/1** trên Python 3.11.11 |
 | Ruff import/function checks và `git diff --check` | **PASS** |
 
-Chỉ dùng fixture giả lập; không dùng dữ liệu người nộp thuế thật. Đầu ra là PDF dự thảo, không ký/nộp; pháp định XLSX, XML/schema và hồ sơ bổ sung vẫn chưa triển khai. Workflow GitHub Actions cho nhánh/PR mới cần xác nhận sau khi đẩy commit.
+Chỉ dùng fixture giả lập; không dùng dữ liệu người nộp thuế thật. Đầu ra là PDF dự thảo, không ký/nộp; pháp định XLSX, XML/schema và hồ sơ bổ sung vẫn chưa triển khai. PR #5 đã mở ở trạng thái draft; GitHub Actions chưa hiện run/status ở lần kiểm tra gần nhất.
 
 ### Phạm vi còn chặn
 
