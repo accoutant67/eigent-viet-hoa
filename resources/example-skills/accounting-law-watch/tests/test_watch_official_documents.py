@@ -194,6 +194,46 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual(failed[0]["status"], "fail")
         self.assertEqual(failed[0]["reason"], "expected_marker_not_found")
 
+    def test_reference_check_verifies_expected_official_attachment_link(self) -> None:
+        attachment_url = (
+            "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/9/"
+            "dinh-chinh-tt-89-2026-btc.signed.pdf"
+        )
+        source = {
+            "source_checks": [
+                {
+                    "name": "vanban_tt89_2026",
+                    "url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
+                    "expected_marker": "89/2026/TT-BTC",
+                    "expected_attachment": {
+                        "url": attachment_url,
+                        "text_contains": "dinh-chinh-tt-89-2026-btc.signed.pdf",
+                    },
+                }
+            ]
+        }
+        page = (
+            "<h1>Thông tư số 89/2026/TT-BTC</h1>"
+            f'<a href="{attachment_url}">'
+            "dinh-chinh-tt-89-2026-btc.signed.pdf</a>"
+        )
+        passed = watch.check_official_references(source, lambda _url: page)
+        self.assertEqual(passed[0]["status"], "pass")
+        self.assertTrue(passed[0]["expected_attachment_found"])
+
+        missing = watch.check_official_references(
+            source,
+            lambda _url: "<h1>Thông tư số 89/2026/TT-BTC</h1>",
+        )
+        self.assertEqual(missing[0]["status"], "fail")
+        self.assertEqual(missing[0]["reason"], "expected_attachment_not_found")
+
+        source["source_checks"][0]["expected_attachment"]["url"] = (
+            "https://example.com/untrusted.pdf"
+        )
+        blocked = watch.check_official_references(source, lambda _url: page)
+        self.assertEqual(blocked[0]["status"], "blocked")
+
     def test_reference_check_blocks_unapproved_host_and_external_redirect(self) -> None:
         source = {
             "source_checks": [

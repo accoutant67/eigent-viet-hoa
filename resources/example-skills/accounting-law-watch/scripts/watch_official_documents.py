@@ -345,6 +345,37 @@ class _TextCollector(HTMLParser):
             self.parts.append(data.strip())
 
 
+class _ReferencePageParser(_TextCollector):
+    """Collect visible text and links from a configured official detail page."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.links: list[dict[str, str]] = []
+        self._href: str | None = None
+        self._anchor_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        self._href = dict(attrs).get("href")
+        self._anchor_parts = []
+
+    def handle_data(self, data: str) -> None:
+        super().handle_data(data)
+        if self._href is not None and data.strip():
+            self._anchor_parts.append(data.strip())
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() != "a":
+            return
+        if self._href:
+            self.links.append(
+                {"href": self._href, "text": " ".join(self._anchor_parts)}
+            )
+        self._href = None
+        self._anchor_parts = []
+
+
 def parse_detail_metadata(html: str) -> dict[str, str | None]:
     parser = _TextCollector()
     parser.feed(html)
@@ -510,7 +541,9 @@ def _fetch_html(
 
 def fetch_official_page(url: str, timeout: int = 20) -> str:
     safe_url = official_url(url)
-    return _fetch_html(safe_url, frozenset({OFFICIAL_HOST}), "danh sách văn bản", timeout)
+    return _fetch_html(
+        safe_url, frozenset({OFFICIAL_HOST}), "danh sách văn bản", timeout
+    )
 
 
 def fetch_official_reference(url: str, timeout: int = 20) -> str:
@@ -538,13 +571,50 @@ def check_official_references(
                 raise ValueError("expected_marker_missing")
             safe_url = official_reference_url(url)
             html = fetcher(safe_url)
-            parser = _TextCollector()
+            parser = _ReferencePageParser()
             parser.feed(html)
             visible_text = normalize_text(" ".join(parser.parts))
             if normalize_text(marker) not in visible_text:
                 result.update({"status": "fail", "reason": "expected_marker_not_found"})
             else:
-                result.update({"status": "pass", "marker_found": True})
+                result["marker_found"] = True
+                expected_attachment = item.get("expected_attachment")
+                if isinstance(expected_attachment, dict):
+                    expected_attachment_url = official_reference_url(
+                        str(expected_attachment.get("url") or "")
+                    )
+                    expected_attachment_text = normalize_text(
+                        str(expected_attachment.get("text_contains") or "")
+                    )
+                    attachment_found = False
+                    for link in parser.links:
+                        try:
+                            link_url = official_reference_url(
+                                urljoin(safe_url, link["href"])
+                            )
+                        except ValueError:
+                            continue
+                        link_text = normalize_text(link["text"])
+                        if link_url == expected_attachment_url and (
+                            not expected_attachment_text
+                            or expected_attachment_text in link_text
+                        ):
+                            attachment_found = True
+                            break
+                    if attachment_found:
+                        result.update(
+                            {"status": "pass", "expected_attachment_found": True}
+                        )
+                    else:
+                        result.update(
+                            {
+                                "status": "fail",
+                                "reason": "expected_attachment_not_found",
+                                "expected_attachment_found": False,
+                            }
+                        )
+                else:
+                    result.update({"status": "pass"})
         except Exception as exc:
             result.update(
                 {
