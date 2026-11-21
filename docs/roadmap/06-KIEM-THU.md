@@ -251,3 +251,11 @@ Log có cảnh báo Node action runtime deprecation và PostCSS; không có test
 - **BLOCKED:** GUI Eigent thật và Chat AI với model hợp lệ; preview Electron không thay thế.
 - **NOT STARTED:** đọc hóa đơn XML/PDF/ảnh; workbook pháp định giữ định dạng; phụ lục GTGT; XML theo schema; khai bổ sung, ký/nộp; TNCN quý; TNDN; BCTC.
 - JSON/XLSX hiện chỉ để soát xét nội bộ. Không tự đổi công thức, mẫu, phiên bản hoặc kỳ lịch sử.
+
+## Kiểm tra loại tệp mẫu TT89 — 21/11/2026
+
+- Trang [Thông tư 89/2026/TT-BTC trên Cổng văn bản Chính phủ](https://vanban.chinhphu.vn/?classid=1&docid=218974&orggroupid=4&pageid=27160) ghi hiệu lực 01/07/2026 và liệt kê hai tệp đính kèm: `89-btc.signed.pdf` và `dinh-chinh-tt-89-2026-btc.signed.pdf`. Trang này không liệt kê tệp workbook .xls/.xlsx.
+- Đã mở tệp đính chính chính thức trên [datafiles.chinhphu.vn](https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/9/dinh-chinh-tt-89-2026-btc.signed.pdf): văn bản là QĐ2551/QĐ-BTC, ngày 15/09/2026, đính chính danh sách tại khoản 3 Điều 99 của TT89. Mã nguồn đã theo dõi QĐ2551 trong registry; không thêm nguồn trùng.
+- Bằng chứng này xác nhận tệp biểu mẫu công bố trên trang TT89 là PDF, không xác nhận cơ quan thuế không có workbook điện tử trong một hệ thống khác. Chưa tìm được workbook .xlsx chính thức từ trang văn bản đã kiểm tra.
+- **NOT STARTED:** sao chép và điền workbook pháp định giữ nguyên định dạng. Không tạo workbook mô phỏng rồi gắn nhãn mẫu chính thức. Workbook hiện xuất ra vẫn chỉ là tài liệu soát xét nội bộ.
+- Đây là cập nhật rà nguồn và trạng thái, không thay đổi mã nghiệp vụ. GUI Eigent thật và Chat AI vẫn **BLOCKED**; XML/schema vẫn **NOT STARTED**.
