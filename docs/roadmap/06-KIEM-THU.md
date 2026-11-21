@@ -183,3 +183,26 @@ Lần smoke đầu cho TT80 Q4/2025 dừng ở assertion vì fixture law-watch t
 - **BLOCKED:** GUI Eigent thật, menu chính/menu con, chuyển tiếng Việt bằng thao tác, Chat AI gửi yêu cầu với model hợp lệ, giao diện Kế toán và log JavaScript/Electron trực tiếp. Không có cửa sổ GUI/model trong môi trường; không thay bằng kết quả unit, HTTP hoặc Electron preview.
 - **NOT STARTED:** đọc hóa đơn XML/PDF/ảnh; đối chiếu sổ 133/33311; sao chép và điền workbook 01/GTGT pháp định có bảo toàn định dạng; phụ lục GTGT theo từng trường hợp; XML theo schema chính thức; hồ sơ bổ sung 01/KHBS; ký/nộp; TNCN quý; TNDN; BCTC.
 - Skill xuất JSON và workbook XLSX **chỉ để soát xét nội bộ**; không phải mẫu nộp chính thức. `submission_ready=false`; không tự chọn biểu mẫu hoặc áp dụng công thức pháp luật.
+
+## Theo dõi bổ sung Luật Quản lý thuế và hóa đơn điện tử — 21/11/2026
+
+### Nguồn mới đã ghi nhận
+
+- Cổng Chính phủ xác nhận [Luật 108/2025/QH15](https://vanban.chinhphu.vn/?docid=216541&pageid=27160) ban hành 10/12/2025, hiệu lực chung 01/07/2026; bản toàn văn do Chính phủ đăng nêu Điều 13 và hóa đơn điện tử của hộ/cá nhân kinh doanh tại Điều 26 có hiệu lực từ 01/01/2026.
+- Metadata Chính phủ xác nhận [Nghị định 254/2026/NĐ-CP](https://vanban.chinhphu.vn/?docid=218689&pageid=27160) và [Thông tư 91/2026/TT-BTC](https://vanban.chinhphu.vn/?docid=219006&pageid=27160) cùng ban hành 30/06/2026, hiệu lực 01/07/2026, thuộc nhóm quy định hóa đơn/chứng từ điện tử.
+- Tệp ký số đính kèm NĐ254 và TT91 bị timeout khi tải qua công cụ đọc nguồn. Vì vậy tác động chuyển tiếp chi tiết, ảnh hưởng tới trường/công thức 01/GTGT và định dạng kỹ thuật XML đều **CHƯA XÁC MINH**. Không suy ra thay đổi mẫu hoặc bật XML.
+- Đã thêm ba văn bản vào registry hiện có. Các nguồn mới là điều kiện kiểm tra cho phiên bản TT89 bắt đầu từ kỳ 01/07/2026; tập nguồn cho TT80 và các kỳ cũ được giữ nguyên. Không tạo watcher thứ hai và không tự áp dụng công thức.
+
+### Kiểm thử và truy cập nguồn
+
+| Kiểm tra             | Lệnh / bằng chứng                                                                                                       | Kết quả                                                                                                                                                                                  |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| VAT unit             | `uv run --project backend pytest resources/example-skills/accounting-vat-return/tests -q --tb=short`                    | **PASS 34/34**; có kiểm tra nguồn hóa đơn mới chỉ ràng buộc TT89 và không đổi bộ nguồn TT80.                                                                                             |
+| Law-watch            | `uv run --project backend pytest resources/example-skills/accounting-law-watch/tests -q --tb=short`                     | **PASS 16/16**; registry kiểm tra ngày hiệu lực, nguồn trùng và trạng thái chưa đánh giá tác động.                                                                                       |
+| VAT/law-watch smoke  | `smoke_cli.py` cho VAT; law-watch fixture smoke                                                                         | **PASS**; TT80 Q4/2025 và TT89 Q3/2026 chạy trên dữ liệu giả lập; fixture luật mới đề xuất rà soát mà không phát hành Issue hay sửa quy tắc.                                             |
+| Regression liên quan | Excel audit **8/8**; VAT Skill integration **1/1**; ChatBox rollback **53 file / 1.113 test**; i18n/type-check **PASS** | **PASS**. Log ChatBox có React `act` warnings, không có test fail.                                                                                                                       |
+| Web/backend smoke    | `bash scripts/smoke-web-local-brain.sh`                                                                                 | **PASS**; startup curl retry rồi health/API/Skills/web route phản hồi, exit 0.                                                                                                           |
+| Pre-commit           | `uvx --from pre-commit pre-commit run --config backend/.pre-commit-config.yaml --files ...`                             | Lần đầu Ruff format **FAIL do tự sửa 2 file Python**; chạy lại toàn bộ hook **PASS**. JSON, `py_compile`, `git diff --check` PASS.                                                       |
+| Nguồn live           | Law-watch `--check-source`, 21/11/2026 17:21 giờ Việt Nam                                                               | Truy cập 50 văn bản; 0 proposal; 13/14 tham chiếu PASS (cả 3 nguồn mới PASS); trang hướng dẫn CSDL Bộ Tài chính HTTPError (**BLOCKED**); `auto_applied=false`, metadata kỳ cũ không đổi. |
+
+Backend full suite và GitHub Actions trên nhánh cập nhật nguồn này chờ chạy sau khi tạo nhánh/PR; không dùng kết quả của PR #3 thay cho CI của thay đổi mới. GUI Eigent thật tiếp tục **BLOCKED**; đọc XML/PDF/ảnh hóa đơn, mẫu XLSX pháp định và XML schema vẫn **NOT STARTED**.

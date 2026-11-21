@@ -2,6 +2,31 @@
   "catalog_schema_version": 1,
   "checked_on": "2026-11-21",
   "subject": "monthly_or_quarterly_vat_return",
+  "related_tax_administration_sources": [
+    {
+      "instrument": "108/2025/QH15",
+      "issued_on": "2025-12-10",
+      "effective_from": "2026-07-01",
+      "special_effective_from": "2026-01-01",
+      "special_effective_scope": "Article 13 and the use of electronic invoices by household and individual businesses under Article 26",
+      "official_source": "https://vanban.chinhphu.vn/?docid=216541&pageid=27160",
+      "review_status": "official_metadata_and_government_full_text_notice_checked; filing-period transition and 01_GTGT impact need human review"
+    },
+    {
+      "instrument": "254/2026/NĐ-CP",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "official_source": "https://vanban.chinhphu.vn/?docid=218689&pageid=27160",
+      "review_status": "official_metadata_checked; full technical schema, transition rules and 01_GTGT impact not reviewed"
+    },
+    {
+      "instrument": "91/2026/TT-BTC",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "official_source": "https://vanban.chinhphu.vn/?docid=219006&pageid=27160",
+      "review_status": "official_metadata_checked; full technical schema, transition rules and 01_GTGT impact not reviewed"
+    }
+  ],
   "filing_form": {
     "form_number": "01/GTGT",
     "status": "official_pdf_template_identified; period_and_field_mapping_review_required; no_auto_selection",
@@ -15,6 +40,7 @@
         "official_source": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
         "official_consolidated_form_reference": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-15-vbhn-btc-42004-50395",
         "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
+        "required_law_watch_sources": ["congbao_tt80_2021", "vanban_tt40_2025_tt80_form_update", "vanban_tt94_2025_tt80_update", "vanban_tt21_2026_tt80_update"],
         "verified_form_items": ["01a", "01b", "11a", "11b", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "33", "34", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
         "form_item_inventory_basis": "base form as issued with TT80; apply effective overlays below for the relevant period; no official workbook export is implemented",
         "period_specific_overlays": [
@@ -84,6 +110,7 @@
         "official_source": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
         "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
         "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/165862",
+        "required_law_watch_sources": ["vanban_law_vat_48_2024", "vanban_decree_vat_181_2025", "vanban_circular_vat_69_2025", "vanban_tt89_2026", "vanban_tt40_2025_tt80_form_update", "vanban_tt94_2025_tt80_update", "vanban_tt21_2026_tt80_update", "congbao_correction_2551_2026", "vanban_tt110_2026", "vanban_law_tax_admin_108_2025", "vanban_decree_invoice_254_2026", "vanban_circular_invoice_91_2026"],
         "correction_reference": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
         "period_use": "Official Government metadata gives an effective date of 2026-07-01. The signed official attachment was checked directly: Annex I, printed page 241 contains form 01/GTGT, including month/quarter period, field [32b], field [34a], and the updated totals formulas. Use for a tax period only after transition and taxpayer-case review; no automatic selection.",
         "verified_form_page": 241,

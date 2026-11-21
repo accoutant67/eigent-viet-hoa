@@ -189,6 +189,9 @@ def write_law_watch_report(path: Path, version: str) -> Path:
             "vanban_tt21_2026_tt80_update",
             "congbao_correction_2551_2026",
             "vanban_tt110_2026",
+            "vanban_law_tax_admin_108_2025",
+            "vanban_decree_invoice_254_2026",
+            "vanban_circular_invoice_91_2026",
         ],
     }[version]
     report = {
@@ -490,6 +493,11 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertEqual(form["form_number"], "01/GTGT")
         self.assertFalse(form["auto_form_selection"])
         versions = {item["instrument"]: item for item in form["versions"]}
+        for instrument, version in versions.items():
+            self.assertEqual(
+                set(version["required_law_watch_sources"]),
+                vat.LAW_WATCH_REQUIRED_SOURCES[instrument],
+            )
         self.assertEqual(versions["89/2026/TT-BTC"]["annex"], "Phụ lục I")
         self.assertEqual(versions["89/2026/TT-BTC"]["verified_form_page"], 241)
         self.assertIn("32b", versions["89/2026/TT-BTC"]["verified_form_items"])
@@ -520,6 +528,37 @@ class VatReturnDraftTests(unittest.TestCase):
         self.assertEqual(
             form["related_annexes"]["status"],
             "official_inventory_identified_applicability_review_required",
+        )
+        tax_admin_sources = {
+            item["instrument"]: item
+            for item in catalog["related_tax_administration_sources"]
+        }
+        self.assertEqual(
+            tax_admin_sources["108/2025/QH15"]["special_effective_from"],
+            "2026-01-01",
+        )
+        self.assertIn(
+            "not reviewed",
+            tax_admin_sources["254/2026/NĐ-CP"]["review_status"],
+        )
+        self.assertIn(
+            "not reviewed",
+            tax_admin_sources["91/2026/TT-BTC"]["review_status"],
+        )
+
+    def test_tax_administration_and_einvoice_sources_only_gate_tt89(self) -> None:
+        post_2026_sources = {
+            "vanban_law_tax_admin_108_2025",
+            "vanban_decree_invoice_254_2026",
+            "vanban_circular_invoice_91_2026",
+        }
+        self.assertTrue(
+            post_2026_sources.isdisjoint(
+                vat.LAW_WATCH_REQUIRED_SOURCES["80/2021/TT-BTC"]
+            )
+        )
+        self.assertTrue(
+            post_2026_sources.issubset(vat.LAW_WATCH_REQUIRED_SOURCES["89/2026/TT-BTC"])
         )
 
     def test_explicit_tt89_lines_keep_categories_distinct_and_recompute_formulas(

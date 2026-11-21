@@ -47,6 +47,9 @@ def main() -> int:
             "vanban_tt21_2026_tt80_update",
             "congbao_correction_2551_2026",
             "vanban_tt110_2026",
+            "vanban_law_tax_admin_108_2025",
+            "vanban_decree_invoice_254_2026",
+            "vanban_circular_invoice_91_2026",
         ]
         law_watch_report.write_text(
             json.dumps(

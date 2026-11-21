@@ -31,6 +31,13 @@
       "period_scope_status": "vat_implementing_circular; current_effect_and_taxpayer_scope_require_period_review"
     },
     {
+      "citation": "108/2025/QH15",
+      "source_url": "https://vanban.chinhphu.vn/?docid=216541&pageid=27160",
+      "issued_on": "2025-12-10",
+      "effective_from": "2026-07-01",
+      "period_scope_status": "official_metadata_checked; general_effective_from_2026-07-01; Article_13_and_household_einvoice_rules_effective_from_2026-01-01; 01_GTGT_and_transition_impact_need_human_review"
+    },
+    {
       "citation": "40/2025/TT-BTC",
       "source_url": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
       "issued_on": "2025-06-13",
@@ -57,6 +64,20 @@
       "issued_on": "2026-06-30",
       "effective_from": "2026-07-01",
       "period_scope_status": "official_01_GTGT_template_verified_in_annex_I_pdf_page_241; transition_and_tax_period_mapping_need_human_review"
+    },
+    {
+      "citation": "254/2026/NĐ-CP",
+      "source_url": "https://vanban.chinhphu.vn/?docid=218689&pageid=27160",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "period_scope_status": "official_metadata_checked; electronic_invoice_and_e_document_framework; full_text_technical_schema_transition_and_01_GTGT_impact_not_reviewed; human_review_required"
+    },
+    {
+      "citation": "91/2026/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=219006&pageid=27160",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "period_scope_status": "official_metadata_checked; implements_Law_108_and_Decree_254_for_electronic_invoices; technical_schema_transition_and_01_GTGT_impact_not_reviewed; human_review_required"
     },
     {
       "citation": "110/2026/TT-BTC",
@@ -105,6 +126,21 @@
       "name": "vanban_tt89_2026",
       "url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
       "expected_marker": "89/2026/TT-BTC"
+    },
+    {
+      "name": "vanban_law_tax_admin_108_2025",
+      "url": "https://vanban.chinhphu.vn/?docid=216541&pageid=27160",
+      "expected_marker": "108/2025/QH15"
+    },
+    {
+      "name": "vanban_decree_invoice_254_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=218689&pageid=27160",
+      "expected_marker": "254/2026/NĐ-CP"
+    },
+    {
+      "name": "vanban_circular_invoice_91_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=219006&pageid=27160",
+      "expected_marker": "91/2026/TT-BTC"
     },
     {
       "name": "vanban_tt110_2026",

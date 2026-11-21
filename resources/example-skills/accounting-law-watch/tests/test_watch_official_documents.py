@@ -200,6 +200,9 @@ class OfficialLawWatchTests(unittest.TestCase):
                 "vanban_tt89_2026",
                 "vanban_tt110_2026",
                 "congbao_correction_2551_2026",
+                "vanban_law_tax_admin_108_2025",
+                "vanban_decree_invoice_254_2026",
+                "vanban_circular_invoice_91_2026",
             }.issubset(names)
         )
         self.assertNotIn("mof_official_answer_tt80_01_gtgt", names)
@@ -208,8 +211,21 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual(documents["48/2024/QH15"]["effective_from"], "2025-07-01")
         self.assertEqual(documents["181/2025/NĐ-CP"]["effective_from"], "2025-07-01")
         self.assertEqual(documents["69/2025/TT-BTC"]["effective_from"], "2025-07-01")
+        self.assertEqual(documents["108/2025/QH15"]["effective_from"], "2026-07-01")
+        self.assertIn(
+            "2026-01-01",
+            documents["108/2025/QH15"]["period_scope_status"],
+        )
+        self.assertEqual(documents["254/2026/NĐ-CP"]["effective_from"], "2026-07-01")
+        self.assertEqual(documents["91/2026/TT-BTC"]["effective_from"], "2026-07-01")
+        self.assertIn(
+            "not_reviewed", documents["254/2026/NĐ-CP"]["period_scope_status"]
+        )
         self.assertIn("01_GTGT", documents["89/2026/TT-BTC"]["period_scope_status"])
-        self.assertIn("does_not_include_80_or_89", documents["110/2026/TT-BTC"]["period_scope_status"])
+        self.assertIn(
+            "does_not_include_80_or_89",
+            documents["110/2026/TT-BTC"]["period_scope_status"],
+        )
         self.assertIn("no_01_GTGT", documents["110/2026/TT-BTC"]["period_scope_status"])
         self.assertIn(
             "human_review", documents["21/2026/TT-BTC"]["period_scope_status"]
