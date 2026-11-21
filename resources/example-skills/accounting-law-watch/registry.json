@@ -59,6 +59,13 @@
       "period_scope_status": "official_01_GTGT_template_verified_in_annex_I_pdf_page_241; transition_and_tax_period_mapping_need_human_review"
     },
     {
+      "citation": "110/2026/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=219049&pageid=27160",
+      "issued_on": "2026-07-28",
+      "effective_from": "2026-09-12",
+      "period_scope_status": "official_government_full_text_reviewed; enumerated_repeal_list_does_not_include_80_or_89; no_01_GTGT_form_replacement_identified; no_period_mapping_inferred"
+    },
+    {
       "citation": "2551/QĐ-BTC",
       "source_url": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
       "issued_on": "2026-09-15",
@@ -98,6 +105,11 @@
       "name": "vanban_tt89_2026",
       "url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
       "expected_marker": "89/2026/TT-BTC"
+    },
+    {
+      "name": "vanban_tt110_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=219049&pageid=27160",
+      "expected_marker": "110/2026/TT-BTC"
     },
     {
       "name": "vanban_tt40_2025_tt80_form_update",

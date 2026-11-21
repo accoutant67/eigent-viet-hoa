@@ -259,6 +259,20 @@ class WorkbookAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(WorkbookAuditError, "Unsafe XML"):
             audit_workbook(unsafe)
 
+    def test_rejects_utf16_doctype_before_expanding_entities(self) -> None:
+        unsafe = self.root / "utf16-unsafe.xlsx"
+        workbook_xml = (
+            '<?xml version="1.0" encoding="UTF-16"?>'
+            '<!DOCTYPE workbook [<!ENTITY x "expanded">]>'
+            "<workbook>&x;</workbook>"
+        ).encode("utf-16")
+        with zipfile.ZipFile(unsafe, "w") as archive:
+            archive.writestr("xl/workbook.xml", workbook_xml)
+            archive.writestr("xl/_rels/workbook.xml.rels", b"<Relationships/>")
+
+        with self.assertRaisesRegex(WorkbookAuditError, "Unsafe XML"):
+            audit_workbook(unsafe)
+
 
 if __name__ == "__main__":
     unittest.main()

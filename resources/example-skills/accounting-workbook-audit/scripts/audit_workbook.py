@@ -29,6 +29,13 @@ class WorkbookAuditError(ValueError):
     """Raised when a workbook cannot be audited safely."""
 
 
+class _DoctypeRejectingTreeBuilder(ET.TreeBuilder):
+    """Reject DTD declarations even when the XML encoding is not ASCII-compatible."""
+
+    def doctype(self, name: str, pubid: str | None, system: str | None) -> None:
+        raise WorkbookAuditError("Unsafe XML declarations are not accepted.")
+
+
 def _tag(name: str) -> str:
     return f"{{{MAIN_NS}}}{name}"
 
@@ -45,7 +52,10 @@ def _parse_xml(archive: zipfile.ZipFile, name: str) -> ET.Element:
     if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
         raise WorkbookAuditError(f"Unsafe XML declarations are not accepted: {name}.")
     try:
-        return ET.fromstring(data)
+        parser = ET.XMLParser(target=_DoctypeRejectingTreeBuilder())
+        return ET.fromstring(data, parser=parser)
+    except WorkbookAuditError:
+        raise
     except ET.ParseError as exc:
         raise WorkbookAuditError(f"Invalid workbook XML: {name}.") from exc
 

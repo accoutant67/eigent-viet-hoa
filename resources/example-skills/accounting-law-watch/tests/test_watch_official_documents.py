@@ -198,6 +198,7 @@ class OfficialLawWatchTests(unittest.TestCase):
                 "vanban_tt21_2026_tt80_update",
                 "mof_vbpq_official_database_guide",
                 "vanban_tt89_2026",
+                "vanban_tt110_2026",
                 "congbao_correction_2551_2026",
             }.issubset(names)
         )
@@ -208,6 +209,8 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual(documents["181/2025/NĐ-CP"]["effective_from"], "2025-07-01")
         self.assertEqual(documents["69/2025/TT-BTC"]["effective_from"], "2025-07-01")
         self.assertIn("01_GTGT", documents["89/2026/TT-BTC"]["period_scope_status"])
+        self.assertIn("does_not_include_80_or_89", documents["110/2026/TT-BTC"]["period_scope_status"])
+        self.assertIn("no_01_GTGT", documents["110/2026/TT-BTC"]["period_scope_status"])
         self.assertIn(
             "human_review", documents["21/2026/TT-BTC"]["period_scope_status"]
         )
@@ -224,6 +227,14 @@ class OfficialLawWatchTests(unittest.TestCase):
             watch.official_url(source["url"]),
             "https://vbpq.mof.gov.vn/Huongdankhaithac",
         )
+
+    def test_tt110_official_metadata_domain_is_allowlisted_over_https(self) -> None:
+        source = next(
+            item
+            for item in registry()["source_checks"]
+            if item["name"] == "vanban_tt110_2026"
+        )
+        self.assertEqual(watch.official_url(source["url"]), source["url"])
 
     def test_official_source_redirect_cannot_leave_the_allowlisted_host(self) -> None:
         handler = watch._AllowlistedRedirectHandler()

@@ -27,7 +27,6 @@ name: Accounting law watch
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: accounting-law-watch-${{ github.workflow }}-${{ github.ref }}
@@ -65,8 +64,37 @@ jobs:
           python resources/example-skills/accounting-law-watch/scripts/publish_law_proposals.py
           --report law-watch-report.json --repo "$GITHUB_REPOSITORY" --dry-run
 
+      - name: Upload checked law-watch report
+        uses: actions/upload-artifact@v4
+        with:
+          name: law-watch-report
+          path: law-watch-report.json
+          retention-days: 1
+
+  publish:
+    name: Publish deduplicated review Issues
+    needs: watch
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_proposals))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download checked law-watch report
+        uses: actions/download-artifact@v4
+        with:
+          name: law-watch-report
+
       - name: Publish deduplicated review Issues
-        if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_proposals))
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
