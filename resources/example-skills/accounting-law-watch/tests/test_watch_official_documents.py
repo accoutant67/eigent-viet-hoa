@@ -44,6 +44,27 @@ class OfficialLawWatchTests(unittest.TestCase):
         self.assertEqual(found["published_on"], "2026-11-23")
         self.assertEqual(found["title"], "Quy định hồ sơ kê khai thuế")
 
+    def test_listing_parser_recognizes_qh15_law_and_proposes_new_law(self) -> None:
+        html = (
+            "<table><tr>"
+            "<td>123/2026/QH15</td>"
+            "<td>Luật sửa đổi quy định thuế</td>"
+            "<td>24/11/2026</td>"
+            '<td><a href="/?docid=220003&amp;pageid=27160">123/2026/QH15</a></td>'
+            "</tr></table>"
+        )
+        report = watch.build_report(
+            html,
+            registry(),
+            checked_at="2026-11-24T00:00:00+00:00",
+        )
+        self.assertEqual(len(report["proposals"]), 1)
+        proposal = report["proposals"][0]
+        self.assertEqual(proposal["citation"], "123/2026/QH15")
+        self.assertEqual(proposal["published_on"], "2026-11-24")
+        self.assertEqual(proposal["period_scope_status"], "needs_human_review")
+        self.assertFalse(report["auto_applied"])
+
     def test_old_known_and_pre_monitor_documents_are_not_new_proposals(self) -> None:
         report = watch.build_report(
             FIXTURE.read_text(encoding="utf-8"),

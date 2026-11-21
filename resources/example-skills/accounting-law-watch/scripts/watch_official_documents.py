@@ -24,7 +24,7 @@ MAX_DETAIL_PAGES = 20
 
 _CITATION_RE = re.compile(
     r"(?<![\w])\d{1,4}\s*/\s*\d{4}\s*/\s*"
-    r"(?:TT|NĐ|ND|QĐ|QD|VBHN|L|CT|QH|NQ|NĐ-CP|ND-CP)"
+    r"(?:TT|NĐ|ND|QĐ|QD|VBHN|L|CT|QH\d+|QH|NQ|NĐ-CP|ND-CP)"
     r"(?:[-/][A-ZĐ0-9]+)*(?![\w])",
     re.IGNORECASE,
 )
