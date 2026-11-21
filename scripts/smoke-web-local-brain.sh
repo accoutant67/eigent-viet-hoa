@@ -136,22 +136,32 @@ curl --silent --show-error --fail \
   --header "X-Channel: web" \
   --output "${TMP_DIR}/skill_files.json" \
   "http://${BRAIN_HOST}:${BRAIN_PORT}/skills/accounting-workbook-audit/files"
-python3 - "${TMP_DIR}/skills.json" "${TMP_DIR}/skill_files.json" <<'PY'
+curl --silent --show-error --fail \
+  --header "X-Channel: web" \
+  --output "${TMP_DIR}/law_skill_files.json" \
+  "http://${BRAIN_HOST}:${BRAIN_PORT}/skills/accounting-law-watch/files"
+python3 - "${TMP_DIR}/skills.json" "${TMP_DIR}/skill_files.json" \
+  "${TMP_DIR}/law_skill_files.json" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 skills_payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-matches = [
-    item for item in skills_payload["skills"]
-    if item["name"] == "accounting-workbook-audit"
-]
-assert len(matches) == 1, "accounting Skill must appear exactly once"
-assert matches[0]["isExample"] is True, "accounting Skill must be bundled"
-files_payload = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-paths = {item["path"] for item in files_payload["files"]}
-assert {"SKILL.md", "scripts/audit_workbook.py"} <= paths, paths
-print("[smoke] PASS: backend lists one bundled accounting Skill and its CLI")
+expected = {
+    "accounting-workbook-audit": "scripts/audit_workbook.py",
+    "accounting-law-watch": "scripts/watch_official_documents.py",
+}
+for name in expected:
+    matches = [item for item in skills_payload["skills"] if item["name"] == name]
+    assert len(matches) == 1, f"{name} must appear exactly once"
+    assert matches[0]["isExample"] is True, f"{name} must be bundled"
+
+for name, file_path in zip(expected, sys.argv[2:]):
+    files_payload = json.loads(Path(file_path).read_text(encoding="utf-8"))
+    paths = {item["path"] for item in files_payload["files"]}
+    assert {"SKILL.md", expected[name]} <= paths, (name, paths)
+
+print("[smoke] PASS: backend lists two bundled accounting Skills and their CLIs")
 PY
 
 echo "[smoke] starting web frontend on ${WEB_HOST}:${WEB_PORT}"

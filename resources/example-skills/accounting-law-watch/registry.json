@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "monitor_from": "2026-11-21",
+  "known_documents": [
+    {
+      "citation": "89/2026/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
+      "issued_on": "2026-06-30",
+      "effective_from": "2026-07-01",
+      "period_scope_status": "needs_human_review"
+    },
+    {
+      "citation": "99/2025/TT-BTC",
+      "source_url": "https://mof.gov.vn/tin-tuc-tai-chinh/tin-chinh-sach-tai-chinh/quy-dinh-moi-ve-che-do-ke-toan-doanh-nghiep",
+      "issued_on": "2025-10-27",
+      "effective_from": "2026-01-01",
+      "period_scope_status": "verified_from_official_source"
+    }
+  ],
+  "approved_period_metadata": []
+}
