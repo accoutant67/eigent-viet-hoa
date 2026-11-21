@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import io
 import json
 import sys
-import tempfile
 import unittest
-from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import call, patch
 
@@ -16,8 +13,6 @@ import watch_official_documents as watch
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "official-listing.html"
-sys.path.insert(0, str(ROOT.parent / "accounting-vat-return" / "scripts"))
-import vat_return_draft as vat
 
 
 def registry() -> dict[str, object]:
@@ -225,50 +220,6 @@ class OfficialLawWatchTests(unittest.TestCase):
                 {},
                 "https://example.com/redirected-law",
             )
-
-    def test_live_report_reference_checks_feed_vat_period_gate(self) -> None:
-        data = registry()
-        listing = (
-            "<table><tr><td>80/2021/TT-BTC</td>"
-            "<td>Thông tư hướng dẫn hồ sơ thuế</td><td>29/09/2021</td>"
-            '<td><a href="/?docid=210080&pageid=27160">80/2021/TT-BTC</a></td>'
-            "</tr></table>"
-        )
-        markers = {
-            item["url"]: item["expected_marker"] for item in data["source_checks"]
-        }
-        with tempfile.TemporaryDirectory() as directory:
-            registry_path = Path(directory) / "registry.json"
-            report_path = Path(directory) / "law-watch-report.json"
-            registry_path.write_text(json.dumps(data), encoding="utf-8")
-            with (
-                patch.object(watch, "fetch_official_page", return_value=listing),
-                patch.object(
-                    watch,
-                    "fetch_official_reference",
-                    side_effect=lambda url: f"<p>{markers[url]}</p>",
-                ),
-            ):
-                with redirect_stdout(io.StringIO()):
-                    status = watch.main(
-                        [
-                            "--registry",
-                            str(registry_path),
-                            "--check-source",
-                            "--output",
-                            str(report_path),
-                        ]
-                    )
-            self.assertEqual(status, 0)
-            report = json.loads(report_path.read_text(encoding="utf-8"))
-            decision = vat._review_law_watch_report(
-                report_path, "89/2026/TT-BTC", "2026-Q3"
-            )
-        self.assertEqual(report["official_reference_summary"]["pass"], len(markers))
-        self.assertEqual(report["official_reference_summary"]["fail"], 0)
-        self.assertEqual(report["official_reference_summary"]["blocked"], 0)
-        self.assertEqual(decision["status"], "pass")
-        self.assertFalse(decision["auto_applied"])
 
     def test_issue_publisher_dry_run_builds_issue_without_network(self) -> None:
         issue = {

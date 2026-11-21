@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import io
 import json
 import sys
 import tempfile
 import unittest
 import zipfile
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
 from openpyxl import load_workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import vat_return_draft as vat
+sys.path.insert(
+    0,
+    str(
+        Path(__file__).resolve().parents[1].parent
+        / "accounting-law-watch"
+        / "scripts"
+    ),
+)
+import watch_official_documents as law_watch
 
 
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -216,6 +228,55 @@ class VatReturnDraftTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.workbook = self.root / "synthetic-invoices.xlsx"
         make_workbook(self.workbook)
+
+    def test_live_report_reference_checks_feed_vat_period_gate(self) -> None:
+        registry_path = (
+            Path(__file__).resolve().parents[1].parent
+            / "accounting-law-watch"
+            / "registry.json"
+        )
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+        listing = (
+            "<table><tr><td>80/2021/TT-BTC</td>"
+            "<td>Thông tư hướng dẫn hồ sơ thuế</td><td>29/09/2021</td>"
+            '<td><a href="/?docid=210080&pageid=27160">80/2021/TT-BTC</a></td>'
+            "</tr></table>"
+        )
+        markers = {
+            item["url"]: item["expected_marker"] for item in data["source_checks"]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            registry_path = Path(directory) / "registry.json"
+            report_path = Path(directory) / "law-watch-report.json"
+            registry_path.write_text(json.dumps(data), encoding="utf-8")
+            with (
+                patch.object(law_watch, "fetch_official_page", return_value=listing),
+                patch.object(
+                    law_watch,
+                    "fetch_official_reference",
+                    side_effect=lambda url: f"<p>{markers[url]}</p>",
+                ),
+            ):
+                with redirect_stdout(io.StringIO()):
+                    status = law_watch.main(
+                        [
+                            "--registry",
+                            str(registry_path),
+                            "--check-source",
+                            "--output",
+                            str(report_path),
+                        ]
+                    )
+            self.assertEqual(status, 0)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            decision = vat._review_law_watch_report(
+                report_path, "89/2026/TT-BTC", "2026-Q3"
+            )
+        self.assertEqual(report["official_reference_summary"]["pass"], len(markers))
+        self.assertEqual(report["official_reference_summary"]["fail"], 0)
+        self.assertEqual(report["official_reference_summary"]["blocked"], 0)
+        self.assertEqual(decision["status"], "pass")
+        self.assertFalse(decision["auto_applied"])
 
     def test_import_preserves_zero_padded_invoice_number_and_never_matches_names(
         self,
