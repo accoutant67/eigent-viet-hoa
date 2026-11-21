@@ -79,7 +79,6 @@ def test_accounting_skill_is_discovered_once_and_scoped(
     )
 
 
-
 def test_law_watch_skill_is_discovered_once_and_scoped(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -132,5 +131,6 @@ def test_law_watch_skill_is_discovered_once_and_scoped(
     )
     restricted[LAW_SKILL_NAME]["enabled"] = False
     assert (
-        skill_toolkit._build_allowed_skills(restricted, "single_agent") == set()
+        skill_toolkit._build_allowed_skills(restricted, "single_agent")
+        == set()
     )
