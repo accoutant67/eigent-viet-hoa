@@ -131,7 +131,6 @@ def make_workbook(
     for number, values in enumerate(rows, start=2):
         add_row(number, values)
     workbook = ET.Element(q("workbook"))
-    workbook.set("xmlns:r", REL_NS)
     sheets = ET.SubElement(workbook, q("sheets"))
     ET.SubElement(
         sheets,
