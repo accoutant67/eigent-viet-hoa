@@ -13,6 +13,7 @@ import watch_official_documents as watch
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "official-listing.html"
+VAT_FIXTURE = ROOT / "tests" / "fixtures" / "vat-law-change.html"
 
 
 def registry() -> dict[str, object]:
@@ -128,17 +129,102 @@ class OfficialLawWatchTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             watch.official_url("https://example.com/fake-law")
+        self.assertEqual(
+            watch.official_url("https://congbao.chinhphu.vn/van-ban/example"),
+            "https://congbao.chinhphu.vn/van-ban/example",
+        )
+        self.assertEqual(
+            watch.official_url("https://thanhtrabtc.mof.gov.vn/hoidapcstc/1"),
+            "https://thanhtrabtc.mof.gov.vn/hoidapcstc/1",
+        )
+        with self.assertRaises(ValueError):
+            watch.official_url("https://vanban.chinhphu.vn.evil.example/law")
+
+    def test_new_vat_change_is_proposed_and_known_law_is_not_repeated(self) -> None:
+        data = registry()
+        original = json.dumps(data, ensure_ascii=False, sort_keys=True)
+        report = watch.build_report(
+            VAT_FIXTURE.read_text(encoding="utf-8"),
+            data,
+            detail_fetcher=lambda _url: (
+                "<div>Ngày ban hành 22-11-2099</div>"
+                "<div>Ngày có hiệu lực 01-01-2100</div>"
+            ),
+            checked_at="2099-11-23T00:00:00+00:00",
+        )
+        self.assertEqual(
+            [item["citation"] for item in report["proposals"]],
+            ["999/2099/TT-BTC"],
+        )
+        proposal = report["proposals"][0]
+        self.assertEqual(proposal["issued_on"], "2099-11-22")
+        self.assertEqual(proposal["effective_from"], "2100-01-01")
+        self.assertEqual(proposal["period_scope_status"], "needs_human_review")
+        self.assertEqual(proposal["approval_state"], "proposal")
+        self.assertIn("không sửa công thức", proposal["issue"]["body"])
+        self.assertFalse(report["auto_applied"])
+        self.assertEqual(json.dumps(data, ensure_ascii=False, sort_keys=True), original)
+
+    def test_official_reference_checks_are_allowlisted_and_record_access_status(
+        self,
+    ) -> None:
+        data = registry()
+        sources = data["source_checks"]
+        responses = [str(item["expected_marker"]) for item in sources]
+        with patch.object(watch, "fetch_official_page", side_effect=responses) as fetch:
+            result = watch.check_reference_sources(data)
+        self.assertEqual([item["status"] for item in result], ["pass"] * len(sources))
+        self.assertEqual(fetch.call_count, len(sources))
+        data["source_checks"] = [
+            {
+                "name": "untrusted",
+                "url": "https://example.com/fake-law",
+                "expected_marker": "fake",
+            }
+        ]
+        self.assertEqual(watch.check_reference_sources(data)[0]["status"], "blocked")
+
+    def test_registry_tracks_official_vat_form_amendment_sources(self) -> None:
+        data = registry()
+        names = [item["name"] for item in data["source_checks"]]
+        self.assertEqual(len(names), len(set(names)))
+        self.assertTrue(
+            {
+                "vanban_law_vat_48_2024",
+                "vanban_decree_vat_181_2025",
+                "vanban_circular_vat_69_2025",
+                "vanban_tt40_2025_tt80_form_update",
+                "vanban_tt94_2025_tt80_update",
+                "vanban_tt21_2026_tt80_update",
+                "mof_official_answer_tt80_01_gtgt",
+                "mof_vbpq_official_database_guide",
+                "vanban_tt89_2026",
+                "congbao_correction_2551_2026",
+            }.issubset(names)
+        )
+        documents = {item["citation"]: item for item in data["known_documents"]}
+        self.assertEqual(documents["48/2024/QH15"]["effective_from"], "2025-07-01")
+        self.assertEqual(documents["181/2025/NĐ-CP"]["effective_from"], "2025-07-01")
+        self.assertEqual(documents["69/2025/TT-BTC"]["effective_from"], "2025-07-01")
+        self.assertIn("01_GTGT", documents["89/2026/TT-BTC"]["period_scope_status"])
+        self.assertIn(
+            "human_review", documents["21/2026/TT-BTC"]["period_scope_status"]
+        )
+
+    def test_finance_ministry_legal_database_host_is_allowlisted_over_https(
+        self,
+    ) -> None:
+        source = next(
+            item
+            for item in registry()["source_checks"]
+            if item["name"] == "mof_vbpq_official_database_guide"
+        )
+        self.assertEqual(
+            watch.official_url(source["url"]),
+            "https://vbpq.mof.gov.vn/Huongdankhaithac",
+        )
 
     def test_official_source_redirect_cannot_leave_the_allowlisted_host(self) -> None:
-        with patch.object(watch, "build_opener") as build_opener:
-            response = (
-                build_opener.return_value.open.return_value.__enter__.return_value
-            )
-            response.geturl.return_value = "https://example.com/redirected-law"
-            with self.assertRaises(ValueError):
-                watch.fetch_official_page(watch.OFFICIAL_LISTING_URL)
-
-    def test_external_redirect_is_rejected_before_following(self) -> None:
         handler = watch._AllowlistedRedirectHandler()
         request = watch.Request(watch.OFFICIAL_LISTING_URL)
         with self.assertRaises(ValueError):
@@ -150,6 +236,17 @@ class OfficialLawWatchTests(unittest.TestCase):
                 {},
                 "https://example.com/redirected-law",
             )
+        allowed = handler.redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://congbao.chinhphu.vn/van-ban/official",
+        )
+        self.assertEqual(
+            allowed.full_url, "https://congbao.chinhphu.vn/van-ban/official"
+        )
 
     def test_issue_publisher_dry_run_builds_issue_without_network(self) -> None:
         issue = {

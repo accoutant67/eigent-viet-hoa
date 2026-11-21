@@ -88,3 +88,45 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - **NOT STARTED:** nguồn Bộ Tài chính, cơ quan thuế và BHXH ngoài cổng Chính phủ; xác minh điều khoản chuyển tiếp/phạm vi kỳ của từng văn bản; đề xuất PR cập nhật biểu mẫu sau khi có người duyệt; lịch chạy theo sự kiện schedule chưa được chờ tới trong lượt này.
 - **NOT STARTED:** xuất/nhập workbook giữ định dạng, kiểm hóa đơn, tờ khai GTGT tháng/quý, TNCN quý, TNDN tạm nộp, bộ BCTC và XML theo schema đã xác minh. Skill Excel hiện tại chỉ đọc và báo cáo; không khẳng định các module trên đã PASS.
 - Registry không chứa công thức được tự cập nhật. Kỳ áp dụng của văn bản mới vẫn để `needs_human_review`; test bảo toàn quy tắc kỳ cũ dùng dữ liệu fixture.
+
+## Báo cáo kiểm thử quy trình GTGT — 21/11/2026
+
+### Commit và phạm vi
+
+- **Commit mã:** `34b5e9ea82e00f4d90f52826a700da2a8bcddc5b`; tree GitHub `5a91e222c10fcbc3cfd4c472911282095b2da926`. Mã được kiểm thử cục bộ nằm trong cùng tree.
+- **Nhánh:** `codex/vat-return-mvp`, dự kiến PR riêng xếp sau PR #1. PR #1 vẫn mở dạng draft, chưa merge.
+- **Môi trường cục bộ:** Python 3.12.14; môi trường backend qua `uv` dùng Python 3.11.11; Node.js 24.22.3 trong khi dự án khai báo `>=18 <23`; `xvfb-run` không có.
+- **Dữ liệu kiểm thử:** fixture hóa đơn giả lập; không dùng dữ liệu người nộp thuế thật.
+- **CI đã chạy trên commit mã:** [Accounting VAT return draft, run 44870204102](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44870204102) — hai job kết thúc success: unit/fixture/CLI và Eigent Skill loading/permission integration. Các workflow đầy đủ của PR chưa có kết quả ở thời điểm ghi mục này.
+
+### Kết quả kiểm thử
+
+| Phần | Lệnh/cách chạy | Trạng thái và bằng chứng |
+| --- | --- | --- |
+| GTGT unit | `python -m unittest discover -s resources/example-skills/accounting-vat-return/tests -p 'test_*.py' -v` | **PASS 11/11** cục bộ và CI. |
+| GTGT CLI smoke | `python resources/example-skills/accounting-vat-return/tests/smoke_cli.py` | **PASS**: nhập fixture, phân loại, soát, tổng hợp, kiểm tra độc lập và xuất JSON dự thảo nội bộ. Chỉ tiêu mẫu pháp định và XML được đánh dấu BLOCKED/NOT_STARTED. |
+| Eigent Skill integration | `uv run --project backend pytest backend/tests/app/service/test_accounting_vat_skill_integration.py -v` | **PASS 1/1** cục bộ và CI: discovery một Skill, quyền cho phép/từ chối và 14 ID vai trò không trùng; các ID là vai trò quy trình, chưa đăng ký thành Agents. |
+| Law-watch regression | `python -m unittest discover -s resources/example-skills/accounting-law-watch/tests -p 'test_*.py' -v` | **PASS 14/14** cục bộ; CI trên commit mã hoàn tất success. Fixture kiểm tra văn bản cũ/mới, ngày ban hành/ngày hiệu lực, kỳ cũ, đề xuất chờ duyệt và không tự áp dụng. |
+| Law-watch fixture smoke | `python resources/example-skills/accounting-law-watch/tests/smoke_cli.py` | **PASS**: phát hiện văn bản giả lập mới, Issue chỉ dry-run, registry và quy tắc kỳ cũ giữ nguyên, `auto_applied=false`. Không tạo Issue thật. |
+| Excel hiện có | `python resources/example-skills/accounting-workbook-audit/tests/smoke_cli.py`; `python -m unittest discover -s resources/example-skills/accounting-workbook-audit/tests -p 'test_*.py' -v` | **PASS**: CLI smoke và regression **7/7**, kể cả mã `00017`, tên trùng, công thức/DTD và bảo toàn workbook nguồn. |
+| ChatBox regression | `VITE_CHATBOX_EVENT_BUS=false npx vitest run --config vitest.config.ts test/unit/components/ChatBox test/unit/store/chatStore.test.ts test/unit/store/restoredRunApproval.test.ts test/unit/store/chatEventProjectionBridge.test.ts --maxWorkers=2 --minWorkers=1 --silent --reporter=dot` | **PASS 1.113/1.113** trên 53 file. Lỗi assertion đã có trên `main` trước PR được ghi ở phần đầu báo cáo; không có thay đổi frontend trong nhánh GTGT. |
+| i18n và kiểu frontend | `npm run check:i18n`; `npm run type-check` | **PASS**: kiểm tra 48 occurrence, 48 ngoại lệ đã ghi nhận; type-check PASS. Đây không phải thao tác GUI. |
+| Backend/frontend HTTP smoke | `bash scripts/smoke-web-local-brain.sh` | **PASS**: backend health/session/capabilities, hai Skills và file Skill, Vite root/route phản hồi. Một số lần curl đầu báo cổng chưa sẵn sàng trong lúc ứng dụng khởi động; script chờ và hoàn tất thành công. |
+| Pre-commit và kiểm tra tĩnh | Pre-commit cho các tệp đã đổi; `git diff --check`, `python -m py_compile`, `bash -n` | **PASS** sau khi sửa các lỗi nêu dưới đây. |
+| Toàn bộ backend cục bộ | `uv run pytest tests/app -q` | **BLOCKED**: tiến trình bị hệ điều hành kill, exit 137 ở khoảng 63%; có một lượt in `F` trước khi bị kill nhưng không thu được traceback đầy đủ để xác định nguyên nhân. Không coi là PASS; cần xem kết quả workflow đầy đủ của PR. |
+| Frontend test toàn bộ | Vitest suite rộng trên host hiện tại | **BLOCKED/không kết luận**: worker thoát/time-out; Node 24.22.3 nằm ngoài dải phiên bản dự án (`<23`). Regression ChatBox có lệnh mục tiêu và kết quả riêng như trên. |
+| Electron preview, relay và GUI thật | `xvfb-run`/cửa sổ ứng dụng Eigent | **BLOCKED** tại máy này vì thiếu `xvfb-run` và cửa sổ ứng dụng. Không suy từ unit test hoặc HTTP smoke thành PASS giao diện. |
+
+### Nguồn pháp luật và kiểm tra nguồn
+
+- Đã xác minh trên nguồn Chính phủ/Công báo: 01/GTGT ở Phụ lục II TT80/2021; TT89/2026 có hiệu lực **01/07/2026** và mẫu 01/GTGT tại Phụ lục I, trang PDF 241. Đã đối chiếu nội dung sửa mẫu liên quan của TT40/2025, TT94/2025, TT21/2026 và đính chính 2551/QĐ-BTC. Nguồn gốc được liệt kê trong `resources/example-skills/accounting-vat-return/legal/form_catalog.json`.
+- Lệnh kiểm tra nguồn law-watch đọc 50 mục từ danh sách văn bản Chính phủ, `source_accessed=true`, không có ứng viên mới ở lượt chạy và không tạo đề xuất. 6/8 URL kiểm tra được; hai trang hỏi đáp Bộ Tài chính trả HTTPError, được đánh dấu chưa truy cập và không được dùng như văn bản trả lời chính thức.
+- **Không tự chọn mẫu theo kỳ.** TT89/điều khoản chuyển tiếp, đối tượng và kỳ khai còn cần người chuyên môn rà soát; ánh xạ trường 01/GTGT, các phụ lục, workbook pháp định và XML schema chưa được bật hoặc xác minh. Không xuất XLSX/XML, ký hoặc nộp hồ sơ.
+
+### Sửa lỗi và giới hạn nghiệp vụ
+
+- Pre-commit ban đầu bắt Ruff E731 và Bandit B310 ở đoạn xử lý XML/URL. Đã đổi sang parser XML chống DTD/entity và bộ xử lý redirect chỉ theo host cho phép; thêm fixture XML có khoảng trắng trước DTD; sau đó unit, Bandit, pre-commit và smoke đều PASS.
+- Một lần gọi fixture smoke dùng tên script không tồn tại; đã sửa sang `tests/smoke_cli.py` và chạy lại thành công. Đây là lỗi câu lệnh, không phải lỗi nghiệp vụ.
+- Scope hiện chạy được: đọc `.xlsx`/`.csv`, giữ mã dạng chuỗi như `00017`, phân loại theo MST thay vì tên, giữ các dòng có trạng thái cần duyệt ngoài tổng, kiểm tra số học cơ bản, tổng hợp theo nhãn nguồn, đối chiếu độc lập và xuất JSON nội bộ.
+- **NOT STARTED:** hóa đơn XML/PDF/ảnh; đối chiếu sổ 133/33311; điền/chỉnh workbook có bảo toàn định dạng; ánh xạ tờ khai/phụ lục đã duyệt; XML theo schema; nộp hồ sơ; TNCN, TNDN, quyết toán và BCTC. Các vai trò HD01–HD04, TK01/TK05, BM01–BM03, PL01–PL04, KTT03 mới là luồng trách nhiệm trong một Skill, không phải các bot riêng đã tích hợp.
+- **BLOCKED:** menu, chuyển tiếng Việt bằng GUI, Chat AI với model hợp lệ, màn hình Kế toán và thao tác Electron thật. Giữ các mục này BLOCKED đến khi có môi trường giao diện.

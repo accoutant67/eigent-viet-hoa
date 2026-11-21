@@ -18,6 +18,18 @@ OFFICIAL_LISTING_URL = (
     "https://vanban.chinhphu.vn/he-thong-van-ban?classid=0&maxresults=50&mode=1"
 )
 OFFICIAL_HOST = "vanban.chinhphu.vn"
+OFFICIAL_HOSTS = frozenset(
+    {
+        OFFICIAL_HOST,
+        "congbao.chinhphu.vn",
+        "mof.gov.vn",
+        "vbpq.mof.gov.vn",
+        "m-portal.mof.gov.vn",
+        "portal.mof.gov.vn",
+        "thanhtrabtc.mof.gov.vn",
+        "ttcg.mof.gov.vn",
+    }
+)
 USER_AGENT = "EigentAccountingLawWatch/0.1 (+read-only official-source monitor)"
 MAX_RESPONSE_BYTES = 5_000_000
 MAX_DETAIL_PAGES = 20
@@ -94,13 +106,15 @@ def is_relevant_document(citation: str | None, title: str) -> bool:
 def official_url(value: str, base_url: str = OFFICIAL_LISTING_URL) -> str:
     resolved = urljoin(base_url, value)
     parsed = urlparse(resolved)
-    if parsed.scheme != "https" or parsed.hostname != OFFICIAL_HOST:
-        raise ValueError("Chỉ cho phép truy cập vanban.chinhphu.vn qua HTTPS")
+    if parsed.scheme != "https" or parsed.hostname not in OFFICIAL_HOSTS:
+        raise ValueError(
+            "Chỉ cho phép truy cập các hostname cơ quan nhà nước trong danh sách qua HTTPS"
+        )
     return resolved
 
 
 class _AllowlistedRedirectHandler(HTTPRedirectHandler):
-    """Reject redirects before the client contacts a non-allowlisted host."""
+    """Reject redirects before the HTTP client contacts another host."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         official_url(newurl, req.full_url)
@@ -455,6 +469,49 @@ def fetch_official_page(url: str, timeout: int = 20) -> str:
     return payload.decode(encoding, errors="replace")
 
 
+def check_reference_sources(registry: dict[str, object]) -> list[dict[str, str]]:
+    """Check official reference pages without treating them as change feeds."""
+    results: list[dict[str, str]] = []
+    sources = registry.get("source_checks", [])
+    if not isinstance(sources, list):
+        return [
+            {
+                "name": "registry",
+                "status": "blocked",
+                "reason": "source_checks_must_be_a_list",
+            }
+        ]
+    for source in sources:
+        if not isinstance(source, dict):
+            results.append(
+                {
+                    "name": "registry_entry",
+                    "status": "blocked",
+                    "reason": "invalid_source_check",
+                }
+            )
+            continue
+        name = str(source.get("name", "unnamed"))
+        try:
+            url = official_url(str(source.get("url", "")))
+            page = fetch_official_page(url)
+            marker = str(source.get("expected_marker", ""))
+            if marker and normalize_text(marker) not in normalize_text(page):
+                results.append({"name": name, "status": "marker_missing", "url": url})
+            else:
+                results.append({"name": name, "status": "pass", "url": url})
+        except Exception as exc:
+            results.append(
+                {
+                    "name": name,
+                    "status": "blocked",
+                    "reason": type(exc).__name__,
+                    "url": str(source.get("url", "")),
+                }
+            )
+    return results
+
+
 def load_json(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -486,6 +543,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise RuntimeError(
                     "Đã truy cập nguồn nhưng không đọc được văn bản từ danh sách"
                 )
+            report["official_reference_checks"] = check_reference_sources(registry)
         else:
             html = args.fixture.read_text(encoding="utf-8")
             report = build_report(html, registry)

@@ -3,11 +3,67 @@
   "monitor_from": "2026-11-21",
   "known_documents": [
     {
+      "citation": "80/2021/TT-BTC",
+      "source_url": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
+      "issued_on": "2021-09-29",
+      "effective_from": "2022-01-01",
+      "period_scope_status": "amendment_chain_requires_period_review"
+    },
+    {
+      "citation": "48/2024/QH15",
+      "source_url": "https://vanban.chinhphu.vn/default.aspx?docid=212476&pageid=27160",
+      "issued_on": "2024-11-26",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "foundational_vat_law; subsequent_amendments_and_taxpayer_scope_require_period_review"
+    },
+    {
+      "citation": "181/2025/NĐ-CP",
+      "source_url": "https://vanban.chinhphu.vn/?docid=214336&pageid=27160",
+      "issued_on": "2025-07-01",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "vat_implementing_decree; current_effect_and_taxpayer_scope_require_period_review"
+    },
+    {
+      "citation": "69/2025/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=214417&pageid=27160",
+      "issued_on": "2025-07-01",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "vat_implementing_circular; current_effect_and_taxpayer_scope_require_period_review"
+    },
+    {
+      "citation": "40/2025/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
+      "issued_on": "2025-06-13",
+      "effective_from": "2025-07-01",
+      "period_scope_status": "official_form_address_changes_verified_for_01_GTGT; tax_period_scope_needs_human_review"
+    },
+    {
+      "citation": "94/2025/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=215644&orggroupid=4&pageid=27160",
+      "issued_on": "2025-10-14",
+      "effective_from": "2025-10-14",
+      "period_scope_status": "official_tt80_form_and_address_wording_reviewed; no_01_GTGT_replacement_identified; tax_period_scope_needs_human_review"
+    },
+    {
+      "citation": "21/2026/TT-BTC",
+      "source_url": "https://vanban.chinhphu.vn/?docid=217241&pageid=27160&typegroupid=6",
+      "issued_on": "2026-03-17",
+      "effective_from": "2026-03-17",
+      "period_scope_status": "official_attachment_reviewed; replaces_02_TNDN_and_05_TNDN_not_01_GTGT; tax_period_scope_needs_human_review"
+    },
+    {
       "citation": "89/2026/TT-BTC",
       "source_url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
       "issued_on": "2026-06-30",
       "effective_from": "2026-07-01",
-      "period_scope_status": "needs_human_review"
+      "period_scope_status": "official_01_GTGT_template_verified_in_annex_I_pdf_page_241; transition_and_tax_period_mapping_need_human_review"
+    },
+    {
+      "citation": "2551/QĐ-BTC",
+      "source_url": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
+      "issued_on": "2026-09-15",
+      "effective_from": "2026-09-15",
+      "period_scope_status": "official_attachment_checked_article_99_form_list_correction;_01_GTGT_not_listed_in_corrected_names"
     },
     {
       "citation": "99/2025/TT-BTC",
@@ -15,6 +71,68 @@
       "issued_on": "2025-10-27",
       "effective_from": "2026-01-01",
       "period_scope_status": "verified_from_official_source"
+    }
+  ],
+  "source_checks": [
+    {
+      "name": "congbao_tt80_2021",
+      "url": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
+      "expected_marker": "80/2021/TT-BTC"
+    },
+    {
+      "name": "vanban_law_vat_48_2024",
+      "url": "https://vanban.chinhphu.vn/default.aspx?docid=212476&pageid=27160",
+      "expected_marker": "48/2024/QH15"
+    },
+    {
+      "name": "vanban_decree_vat_181_2025",
+      "url": "https://vanban.chinhphu.vn/?docid=214336&pageid=27160",
+      "expected_marker": "181/2025/NĐ-CP"
+    },
+    {
+      "name": "vanban_circular_vat_69_2025",
+      "url": "https://vanban.chinhphu.vn/?docid=214417&pageid=27160",
+      "expected_marker": "69/2025/TT-BTC"
+    },
+    {
+      "name": "vanban_tt89_2026",
+      "url": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
+      "expected_marker": "89/2026/TT-BTC"
+    },
+    {
+      "name": "vanban_tt40_2025_tt80_form_update",
+      "url": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
+      "expected_marker": "40/2025/TT-BTC"
+    },
+    {
+      "name": "vanban_tt94_2025_tt80_update",
+      "url": "https://vanban.chinhphu.vn/?docid=215644&pageid=27160",
+      "expected_marker": "94/2025/TT-BTC"
+    },
+    {
+      "name": "vanban_tt21_2026_tt80_update",
+      "url": "https://vanban.chinhphu.vn/?docid=217241&pageid=27160&typegroupid=6",
+      "expected_marker": "21/2026/TT-BTC"
+    },
+    {
+      "name": "congbao_correction_2551_2026",
+      "url": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
+      "expected_marker": "2551/QĐ-BTC"
+    },
+    {
+      "name": "mof_official_answer_tt80_01_gtgt",
+      "url": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
+      "expected_marker": "01/GTGT"
+    },
+    {
+      "name": "mof_question_reference_tt89_form_only",
+      "url": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/165862",
+      "expected_marker": "01/GTGT"
+    },
+    {
+      "name": "mof_vbpq_official_database_guide",
+      "url": "https://vbpq.mof.gov.vn/Huongdankhaithac",
+      "expected_marker": "CSDL văn bản pháp quy ngành Tài chính"
     }
   ],
   "approved_period_metadata": []
