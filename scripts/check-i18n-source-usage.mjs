@@ -78,6 +78,7 @@ const PRODUCT_TEXT_CALL =
 // list should stay small and limited to intentional brands, protocol/code
 // samples, native language self-names, or presentation-neutral primitives.
 const NATIVE_LANGUAGE_LABELS = [
+  'Tiếng Việt',
   '简体中文',
   '繁體中文',
   '日本語',

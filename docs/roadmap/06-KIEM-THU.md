@@ -1,0 +1,90 @@
+# Kế hoạch và kết quả kiểm thử
+
+## Quy tắc smoke và regression cho cả 5 giai đoạn
+
+Sau mỗi thay đổi tính năng, lỗi, Agent hoặc Skill: chạy smoke test theo đường thực thi thật của phần vừa đổi; sửa lỗi và chạy lại; sau đó chạy regression liên quan (ChatBox, i18n, Excel, Agents, Skills). Cập nhật báo cáo bằng log của đúng commit. Không dùng unit test để kết luận GUI hoạt động. Mục chưa triển khai ghi NOT STARTED; mục không có môi trường ghi BLOCKED. PR chưa được merge nếu chưa được duyệt.
+
+Workflow `Test` kiểm tra Python, frontend guardrails, i18n, ChatBox rollback, backend/frontend HTTP smoke và Electron preview. Workflow `Accounting workbook audit` chạy CLI qua tiến trình thật trên workbook giả lập rồi chạy regression Excel. Các giai đoạn tiếp theo cần thêm smoke của module mới vào workflow phù hợp.
+
+## Báo cáo ban đầu PR Excel #1 — 21/11/2026 (giờ Việt Nam)
+
+> Phần này ghi lại lượt kiểm thử Excel trước khi bổ sung theo dõi pháp luật. Kết quả hiện hành của PR được ghi ở phần cập nhật cuối báo cáo.
+
+- **Commit mã được kiểm thử:** `9de1839dca53fd6fbe5ff940bea6ae59dc544ea7` (head PR).
+- **Commit tích hợp do GitHub Actions checkout:** `b9f83141c4561e0c1fdc7f79211660f941e07605`, ghép head PR với `main` tại `643ae05615a119a1cbe49e79c6e51b640731991f`.
+- **Môi trường:** GitHub Actions Ubuntu 26.04; Python 3.11; Node.js 20; backend cài bằng `uv sync`; Electron preview chạy qua Xvfb. Máy làm việc không có checkout để khởi động Eigent và không có cửa sổ ứng dụng/model hợp lệ để thao tác GUI thủ công.
+- **Dữ liệu:** workbook giả lập trong thư mục tests; không dùng workbook doanh nghiệp, CCCD hoặc dữ liệu thật.
+- **Bằng chứng:** [Test run 44793696831](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44793696831), [Excel audit run 44793696810](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44793696810), [Pre-commit 44793696782](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44793696782), [Markdown lint 44793696879](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44793696879), [CodeQL 44793696761](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44793696761), [main baseline Test 44774491335](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44774491335).
+
+| Phần kiểm thử | Lệnh / cách chạy | Kết quả | Bằng chứng và giới hạn |
+| --- | --- | --- | --- |
+| Khởi động backend + frontend web | `bash scripts/smoke-web-local-brain.sh` | PASS | Backend health/session/capabilities và `/skills`; Vite HTML và route fallback phản hồi. Có lần `curl` báo chưa kết nối trong lúc tiến trình khởi động; script tiếp tục chờ và cả backend/frontend đều PASS. Đây là HTTP smoke, không xác nhận render GUI. |
+| Nhận diện và phân quyền Skill | API `GET /skills`, `GET /skills/accounting-workbook-audit/files`; test `cd backend && uv run pytest tests/app/service/test_accounting_workbook_skill_integration.py -v` | PASS | API trả đúng một Skill mẫu và file `SKILL.md`/CLI. Test tích hợp kiểm tra bật/tắt Skill, quyền `single_agent`, Agent được chọn và chặn Agent ngoài phạm vi. Không đại diện cho 15 Skills hay 72 bot. |
+| Excel CLI smoke | `python resources/example-skills/accounting-workbook-audit/tests/smoke_cli.py` | PASS | Chạy CLI thật, tạo JSON, giữ nguyên byte workbook nguồn và chặn ghi đè báo cáo. |
+| Excel regression | `python -m unittest discover -s resources/example-skills/accounting-workbook-audit/tests -p 'test_*.py' -v` | PASS | 7/7: khóa trùng, mã `00017`, tên trùng không bị coi là cùng người, cột khóa thiếu không tạo khóa một phần, giá trị thiếu/lỗi Excel/công thức, DTD/entity, từ chối tệp sai định dạng và bảo toàn nguồn. |
+| i18n | `npm run check:i18n` | PASS | `check-i18n-locale-parity: OK`; `check-i18n-source-usage: OK` (48 occurrence được kiểm tra, 48 ngoại lệ đã ghi nhận). Chỉ là kiểm tra tĩnh, thao tác chuyển ngôn ngữ trên GUI đang BLOCKED. |
+| Frontend guardrails | `npm run type-check` và các bước kiểm tra token, Tailwind, Electron access, định dạng, test frontend liên quan | PASS | Các guardrail hoàn tất; test thay đổi frontend 96/96 PASS. |
+| ChatBox regression (rollback renderer) | `VITE_CHATBOX_EVENT_BUS=false npx vitest run --config vitest.config.ts test/unit/components/ChatBox test/unit/store/chatStore.test.ts test/unit/store/restoredRunApproval.test.ts test/unit/store/chatEventProjectionBridge.test.ts` | PASS | 53/53 file, 1.113/1.113 test PASS trên run 44793696831. |
+| Python regression toàn backend | `cd backend && uv run pytest tests/app -v` | PASS | 4.593 passed, 11 skipped, 110 warnings, 11 subtests passed. Test tích hợp Skill nằm trong bộ này. Warnings không làm job thất bại. |
+| Electron preview và stream relay | `xvfb-run --auto-servernum npm run test:preview-browser`; `xvfb-run --auto-servernum npm run test:stream-relay` | PASS | Electron chạy trong Xvfb và các kịch bản preview/relay PASS. Đây là kiểm thử tự động preview, không chứng minh menu/chat/Giao diện Kế toán thực tế. Có cảnh báo PostCSS không truyền `from`; job vẫn PASS. |
+| CI/Pre-commit/Markdown lint/CodeQL | GitHub Actions trên head `9de1839` | PASS | Các run được liên kết phía trên đều kết thúc thành công. |
+| Menu chính/menu con, chuyển tiếng Việt bằng GUI, Chat AI gửi câu hỏi | Thao tác Eigent thật; cần ứng dụng và cấu hình model hợp lệ | BLOCKED | Không có cửa sổ Eigent hoặc model kiểm thử trong môi trường. Không suy ra PASS từ unit/HTTP/Electron preview. |
+| Giao diện Kế toán; bot/Agent nghiệp vụ; 15 Skills hoàn chỉnh | Mở giao diện; đăng ký, công cụ, đầu vào/ra, quyền, phối hợp và xử lý lỗi | NOT STARTED | PR này chỉ đăng ký Skill kiểm toán workbook mẫu; chưa tích hợp bot kế toán hay giao diện nghiệp vụ. |
+| Xuất workbook, hóa đơn, GTGT tháng/quý, TNCN quý, TNDN tạm nộp, BCTC, XML | Smoke nghiệp vụ theo mẫu/schema được xác minh | NOT STARTED | Chưa có module tương ứng trong PR; chưa kiểm tra định dạng workbook đầu ra, kỳ khai hay schema XML. |
+| Cập nhật pháp luật và biểu mẫu | Workflow với nguồn chính thức và fixture văn bản cũ/mới | NOT STARTED | Chưa triển khai theo dõi nguồn, ngày hiệu lực/kỳ áp dụng, Issue/PR đề xuất hay khóa không tự áp dụng công thức. |
+
+### Lỗi ghi nhận, xử lý và kiểm thử lại
+
+- **ChatBox trên `main` trước PR:** Test run 44774491335 có 1.112/1.113 test PASS và một test fail tại `ChatBox.spaceModelSelection.test.tsx`. Log báo `TestingLibraryElementError` không tìm thấy câu tiếng Việt trong DOM. Đây là lỗi kỳ vọng của test: `test/setup.ts` mock `useTranslation()` bằng locale en-US, nhưng assertion lại lấy chuỗi qua i18next singleton có thể đang ở locale khác. Log xác nhận lỗi đã tồn tại trên `main` trước PR.
+- **Khắc phục và retest:** sửa assertion DOM trong test để dùng chuỗi từ bundle en-US đúng với React render; giữ kiểm tra riêng cho error mapping. Không sửa hành vi UI. Chạy lại rollback ChatBox trên head `9de1839`: 53 file, 1.113/1.113 test PASS; toàn bộ workflow Test PASS. Không còn fail ChatBox mới do PR.
+- **Khởi động smoke:** các dòng `curl: (7) Failed to connect` xuất hiện trong vòng chờ trước khi backend/Vite sẵn sàng; sau đó script ghi PASS cho danh sách Skill và hoàn thành web/local-brain smoke. Không có lỗi kết thúc chưa khắc phục.
+- **Log cảnh báo:** Python job ghi 110 warning (bao gồm warning/deprecation trong test phụ thuộc); Electron preview ghi cảnh báo PostCSS. Các job vẫn kết thúc thành công. Một số test frontend cố ý mô phỏng lỗi model/kết nối để kiểm tra hiển thị và recovery; đây không phải lỗi test chưa xử lý.
+- **Lỗi Skill cũ:** run 44777652053 từng lỗi import do regex bị escape thừa, đã sửa tại `4a1cd7b0d5d4795d4c5a58a00fad8957989a0025`; run 44777831156 xác nhận 6 test PASS.
+- **Kiểm tra i18n cũ:** test phát hiện hai nhãn menu tự hiển thị “Tiếng Việt” chưa khai báo ngoại lệ source-usage. Đã khai báo chính xác; kiểm tra i18n hiện PASS.
+
+### Giới hạn và phạm vi còn thiếu
+
+Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI hoặc mở giao diện Kế toán; các ca GUI tương ứng là BLOCKED. Bộ kiểm thử hiện tại không chứng minh workbook được xuất và giữ định dạng, hóa đơn/tờ khai/BCTC đúng nghiệp vụ, XML hợp lệ theo schema đã xác minh, hoặc nguồn pháp luật/biểu mẫu đúng phiên bản. Những module chưa triển khai ở trên phải tiếp tục ghi NOT STARTED cho đến khi có code và bằng chứng smoke thực tế.
+
+## Báo cáo cập nhật: theo dõi văn bản pháp luật và regression — 21/11/2026
+
+### Commit và môi trường
+
+- **Commit mã được kiểm thử:** `e97ca21038c64d802e74a517528c483376c182fd`.
+- **Commit nền:** `main` tại `643ae05615a119a1cbe49e79c6e51b640731991f`. PR #1 vẫn mở, ở trạng thái draft và chưa merge.
+- **Môi trường:** GitHub Actions hosted Ubuntu; Python 3.11.18. Electron preview chạy trong Xvfb. Môi trường không có cửa sổ Eigent/model hợp lệ để thao tác GUI.
+- **Bằng chứng Actions:** [Test 44860014627](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014627), [Accounting law watch 44860014692](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014692), [Accounting workbook audit 44860014640](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014640), [Pre-commit 44860014704](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014704), [Markdown lint 44860014636](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014636), [CodeQL 44860014705](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44860014705).
+
+### Retest phần báo cáo sau khi sửa
+
+- **Commit tài liệu-only được kiểm thử:** `ded62debc9ec4465d8e2db4cf09f023b9b64056c`; không thay đổi mã tính năng. Toàn bộ workflow đều PASS trên head này: [Test 44861247129](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247129), [law watch 44861247073](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247073), [Excel audit 44861247096](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247096), [Pre-commit 44861247083](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247083), [Markdown lint 44861247077](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247077), [CodeQL 44861247085](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44861247085).
+- Trên head này, backend đạt **4.594 passed, 11 skipped, 111 warnings, 11 subtests**; ChatBox **1.113/1.113**; i18n, HTTP/web smoke, Electron preview, law-watch và Excel regression đều PASS.
+- Markdown lint xác nhận bản sửa MD012/MD047 PASS. Report lấy log đầy đủ của code head `e97ca21`; lượt `ded62de` xác nhận lại sau cập nhật tài liệu.
+
+### Smoke và regression đã chạy
+
+- **Skill API — PASS:** `bash scripts/smoke-web-local-brain.sh`. Backend health/session/capabilities và `/skills` hoạt động; API nhận diện đúng hai Skill `accounting-workbook-audit` và `accounting-law-watch`, mỗi Skill đúng một lần, liệt kê đúng `SKILL.md` và CLI; Vite trả HTML cho trang gốc và route.
+- **Đăng ký/phân quyền Skill — PASS:** `cd backend && uv run pytest tests/app/service/test_accounting_workbook_skill_integration.py -v`. Kiểm tra discovery, cài Skill mẫu, danh sách file, config bật/tắt, cho phép `single_agent` và chặn `developer_agent`. Không có Agent nghiệp vụ mới nên phối hợp Agent, công cụ riêng hoặc chống trùng vai trò là **NOT STARTED**.
+- **Law-watch smoke với fixture — PASS:** `python resources/example-skills/accounting-law-watch/tests/smoke_cli.py`. Fixture phát hiện một văn bản giả lập mới `121/2026/TT-BTC`; văn bản đã biết và văn bản trước mốc theo dõi không bị đề xuất lại. Issue dry-run dựng đúng một đề xuất, registry không đổi, `source_accessed=false` và `auto_applied=false`.
+- **Law-watch regression — PASS:** `python -m unittest discover -s resources/example-skills/accounting-law-watch/tests -p 'test_*.py' -v`: **11/11**. Bao gồm ngày ban hành/ngày hiệu lực, kỳ cũ và kỳ mới qua fixture, không áp dụng proposal chưa duyệt, giới hạn host HTTPS và chuyển hướng, tạo Issue giả lập, chống trùng, và dry-run không gọi mạng.
+- **Nguồn chính thức — PASS:** `python resources/example-skills/accounting-law-watch/scripts/watch_official_documents.py --registry resources/example-skills/accounting-law-watch/registry.json --check-source --output law-watch-report.json`. Workflow truy cập `vanban.chinhphu.vn`, đọc **50** dòng danh sách; lần chạy này không thấy ứng viên mới nên `proposals=[]`. Report ghi `source_accessed=true`, `auto_applied=false`; không tạo Issue thật. Lệnh `publish_law_proposals.py --dry-run` không gửi yêu cầu GitHub vì không có đề xuất. API tạo Issue và chống trùng được kiểm bằng mock trong test, không đăng Issue công khai.
+- **Excel smoke/regression — PASS:** `python resources/example-skills/accounting-workbook-audit/tests/smoke_cli.py` và `python -m unittest discover -s resources/example-skills/accounting-workbook-audit/tests -p 'test_*.py' -v`: CLI bảo toàn workbook giả lập; **7/7** regression PASS.
+- **ChatBox regression — PASS:** rollback renderer, **53 file / 1.113 test**; không phát sinh fail mới.
+- **i18n — PASS:** `npm run check:i18n`; locale parity PASS, source usage PASS (**48** occurrence được kiểm tra).
+- **Python backend regression — PASS:** `cd backend && uv run pytest tests/app -v`; **4.594 passed, 11 skipped, 110 warnings, 11 subtests** trong 473,79 giây.
+- **Electron/web — PASS:** web/local brain HTTP smoke, Electron preview browser và stream relay đều thành công. Đây là smoke tự động, không chứng minh menu hoặc giao diện đã hoạt động khi thao tác trực tiếp.
+- **Pre-commit/Markdown lint/CodeQL — PASS** trên commit `e97ca21`.
+- Báo cáo ở commit `6294d19` có lần Markdown lint fail (run 44861071917): MD012 do một dòng trống thừa và MD047 do thiếu newline cuối tệp. Đã sửa cả hai trong cập nhật tài liệu kế tiếp; Markdown lint PASS trên head `ded62de` (run 44861247077).
+
+### Lỗi, cách sửa và kiểm thử lại
+
+- Pre-commit trên commit triển khai đầu `7ad6cbef2787398a411aeb00268744cfc2195008` fail vì Ruff formatter chỉnh khoảng trắng và xuống dòng trong test tích hợp. Không có lỗi lint hoặc lỗi logic kèm theo. Đã áp dụng đúng format trong commit `e97ca21038c64d802e74a517528c483376c182fd`; Pre-commit run 44860014704 PASS, cùng smoke và regression trên head mới PASS.
+- Smoke log có một số `curl: (7)` khi backend/Vite chưa mở cổng; script chờ dịch vụ, sau đó báo PASS. Có cảnh báo deprecation `i18next-parser`, Node `punycode` và PostCSS; các bước kết thúc PASS, không có lỗi chưa khắc phục.
+- ChatBox từng có một assertion fail trên `main` trước PR (run 44774491335); nguyên nhân và cách sửa test đã ghi ở phần trên. Trên head hiện hành, rollback ChatBox PASS 1.113/1.113.
+
+### Chức năng chưa thể kiểm tra hoặc chưa triển khai
+
+- **BLOCKED:** mở menu chính/menu con, đổi tiếng Việt bằng GUI, gửi câu hỏi Chat AI với model hợp lệ, mở giao diện Kế toán. Không có cửa sổ ứng dụng/model kiểm thử; Electron preview và unit test không được dùng thay bằng chứng GUI.
+- **NOT STARTED:** nguồn Bộ Tài chính, cơ quan thuế và BHXH ngoài cổng Chính phủ; xác minh điều khoản chuyển tiếp/phạm vi kỳ của từng văn bản; đề xuất PR cập nhật biểu mẫu sau khi có người duyệt; lịch chạy theo sự kiện schedule chưa được chờ tới trong lượt này.
+- **NOT STARTED:** xuất/nhập workbook giữ định dạng, kiểm hóa đơn, tờ khai GTGT tháng/quý, TNCN quý, TNDN tạm nộp, bộ BCTC và XML theo schema đã xác minh. Skill Excel hiện tại chỉ đọc và báo cáo; không khẳng định các module trên đã PASS.
+- Registry không chứa công thức được tự cập nhật. Kỳ áp dụng của văn bản mới vẫn để `needs_human_review`; test bảo toàn quy tắc kỳ cũ dùng dữ liệu fixture.

@@ -1,0 +1,102 @@
+name: Accounting law watch
+
+'on':
+  pull_request:
+    branches:
+      - main
+      - codex/accounting-workbook-audit-mvp
+    paths:
+      - 'resources/example-skills/accounting-law-watch/**'
+      - '.github/workflows/accounting-law-watch.yml'
+  push:
+    branches:
+      - main
+      - 'codex/**'
+    paths:
+      - 'resources/example-skills/accounting-law-watch/**'
+      - '.github/workflows/accounting-law-watch.yml'
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    inputs:
+      publish_proposals:
+        description: 'Create Issues from official-source proposals (main only)'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: accounting-law-watch-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    name: Test fixtures and smoke official-source monitor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run proposal-only CLI smoke with fixtures
+        run: python resources/example-skills/accounting-law-watch/tests/smoke_cli.py
+
+      - name: Run law-watch regression tests
+        run: python -m unittest discover -s resources/example-skills/accounting-law-watch/tests -p 'test_*.py' -v
+
+      - name: Smoke official Government portal and build proposals
+        run: >-
+          python resources/example-skills/accounting-law-watch/scripts/watch_official_documents.py
+          --registry resources/example-skills/accounting-law-watch/registry.json
+          --check-source --output law-watch-report.json
+
+      - name: Validate Issue publisher without posting
+        if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: >-
+          python resources/example-skills/accounting-law-watch/scripts/publish_law_proposals.py
+          --report law-watch-report.json --repo "$GITHUB_REPOSITORY" --dry-run
+
+      - name: Upload checked law-watch report
+        uses: actions/upload-artifact@v4
+        with:
+          name: law-watch-report
+          path: law-watch-report.json
+          retention-days: 1
+
+  publish:
+    name: Publish deduplicated review Issues
+    needs: watch
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_proposals))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download checked law-watch report
+        uses: actions/download-artifact@v4
+        with:
+          name: law-watch-report
+
+      - name: Publish deduplicated review Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          python resources/example-skills/accounting-law-watch/scripts/publish_law_proposals.py
+          --report law-watch-report.json --repo "$GITHUB_REPOSITORY"

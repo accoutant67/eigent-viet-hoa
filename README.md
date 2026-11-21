@@ -62,3 +62,13 @@ Các nút **Code, Issues, Pull requests, Actions, Settings** ở phía trên tra
 ## Bản quyền
 
 Nguồn: [eigent-ai/eigent](https://github.com/eigent-ai/eigent). Giữ nguyên [LICENSE](./LICENSE), ghi nhận tác giả và tuân thủ giấy phép Apache 2.0. Bản dịch cộng đồng không đại diện hoặc được chứng nhận bởi chủ sở hữu dự án gốc.
+
+## Hỗ trợ nghiệp vụ kế toán (đang phát triển)
+
+Lát cắt đầu tiên bổ sung Skill accounting-workbook-audit để rà soát tệp .xlsx ở chế độ chỉ đọc. Skill báo dòng trùng, khóa trùng theo cột đã chọn, cột bắt buộc còn trống và ô lỗi Excel; kết quả được ghi thành tệp .audit.json riêng.
+
+Chạy trong môi trường có Python 3.11:
+
+    python resources/example-skills/accounting-workbook-audit/scripts/audit_workbook.py "bang-ke.xlsx" --required-column "Mã nhân viên" --key-column "Mã nhân viên"
+
+Có thể thêm --sheet "Tên sheet", --header-row 2 hoặc --output "duong-dan/bao-cao.audit.json". Công cụ không sửa workbook, không tính lại công thức, không tự xóa hoặc điền dữ liệu và không xác nhận tính hợp lệ kế toán/thuế/pháp lý. Chỉ dùng dữ liệu giả lập trong CI. Xem lộ trình kế toán tại docs/roadmap/01-KIEM-KE-DU-AN.md.
