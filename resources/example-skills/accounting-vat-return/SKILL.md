@@ -1,6 +1,6 @@
 ---
 name: accounting-vat-return
-description: "Nhập và kiểm tra dữ liệu hóa đơn mua vào/bán ra, tổng hợp dự thảo GTGT theo tháng/quý; xuất JSON hoặc workbook XLSX soát xét nội bộ, không thay mẫu pháp định."
+description: "Nhập và kiểm tra dữ liệu hóa đơn mua vào/bán ra, tổng hợp dự thảo GTGT theo tháng/quý; xuất JSON, workbook nội bộ hoặc PDF dự thảo chồng trên mẫu 01/GTGT chính thức."
 ---
 
 # Dự thảo kê khai thuế GTGT tháng/quý
@@ -13,9 +13,9 @@ Skill này chạy trong hạ tầng Skill hiện có của Eigent. Các mã HD/T
 2. `HD04` kiểm tra khóa hóa đơn trùng, ngày, trạng thái được khai báo, số tiền, thuế suất ghi trên nguồn, kỳ và ô công thức. Trạng thái thiếu/không nhận diện, hóa đơn trùng, điều chỉnh, thay thế, hủy, sai số học, ngoài kỳ hoặc có công thức được giữ lại để soát và không cộng vào dự thảo.
 3. `PL01`–`PL04` tái sử dụng Skill `accounting-law-watch`; không tạo watcher thứ hai. Trước khi chọn phiên bản, truyền JSON report của law-watch bằng `--law-watch-report`. Báo cáo phải cho thấy đã đọc nguồn chính thức, không có đề xuất văn bản mới chưa duyệt, không tự áp dụng quy tắc và các nguồn bắt buộc của phiên bản đều PASS. Mọi kết luận về kỳ vẫn cần người duyệt.
 4. `TK01` tổng hợp doanh số và tiền thuế theo chiều mua/bán và **nhãn thuế suất trên nguồn**. Công cụ không suy diễn diện chịu thuế, điều kiện khấu trừ hoặc số thuế phải nộp.
-5. `BM01` kiểm tra kỳ hiệu lực, phạm vi người nộp thuế, loại hồ sơ và law-watch trước khi ánh xạ. Người dùng xác nhận `--taxpayer-case credit_method_production_business` và `--filing-type first`; hồ sơ bổ sung bị chặn vì quy trình 01/KHBS chưa triển khai. `BM03` chỉ ánh xạ dòng bán ra qua `form_line_code`/`form_tax_line_code` đã được rà soát; hóa đơn mua vào phải gán tường minh `[23]`/`[24]` hoặc `[23a]`/`[24a]`. `[23a]` nằm trong `[23]`, `[24a]` nằm trong `[24]`; không cộng phần nhập khẩu lần nữa. Không tự suy mã từ tên hàng, tên khách hàng hoặc thuế suất. `BM02` sao chép workbook mẫu chính thức hiện **NOT STARTED**.
+5. `BM01` kiểm tra kỳ hiệu lực, phạm vi người nộp thuế, loại hồ sơ và law-watch trước khi ánh xạ. Người dùng xác nhận `--taxpayer-case credit_method_production_business` và `--filing-type first`; hồ sơ bổ sung bị chặn vì quy trình 01/KHBS chưa triển khai. `BM03` chỉ ánh xạ dòng bán ra qua `form_line_code`/`form_tax_line_code` đã được rà soát; hóa đơn mua vào phải gán tường minh `[23]`/`[24]` hoặc `[23a]`/`[24a]`. `[23a]` nằm trong `[23]`, `[24a]` nằm trong `[24]`; không cộng phần nhập khẩu lần nữa. Không tự suy mã từ tên hàng, tên khách hàng hoặc thuế suất. `BM02` chỉ xuất PDF dự thảo chồng lên mẫu đã xác minh; sao chép/điền workbook mẫu pháp định vẫn **NOT STARTED**.
 6. `TK05` tính lại độc lập tổng hóa đơn và các chỉ tiêu công thức trong danh mục mẫu. `KTT03` tổng hợp ngoại lệ và trạng thái; người dùng duyệt. Không có Agent mới nào được đăng ký.
-7. Xuất JSON hoặc workbook XLSX soát xét nội bộ. Workbook có cảnh báo, tổng hợp, dòng hóa đơn và ngoại lệ; không phải mẫu 01/GTGT. XLSX chính thức, ký, nộp và XML chưa triển khai.
+7. Xuất JSON, workbook XLSX soát xét nội bộ hoặc PDF dự thảo chồng trên mẫu 01/GTGT đã xác minh. PDF luôn mang dấu “DỰ THẢO — CHƯA KÝ — CHƯA NỘP”; chỉ chỉ tiêu có giá trị nguồn mới được điền. XLSX pháp định, ký, nộp và XML chưa triển khai.
 
 ## Chạy
 
@@ -30,13 +30,19 @@ uv run --project backend python resources/example-skills/accounting-vat-return/s
   --filing-type first \
   --invoice-data-complete \
   --supplemental-form-inputs "duong-dan/du-lieu-ngoai-hoa-don.json" \
+  --taxpayer-name "Tên theo hồ sơ người nộp thuế" \
+  --output "du-thao-01-GTGT.pdf" \
   --sheet "HoaDon" \
   --header-row 1
 ```
 
 `--period` nhận `YYYY-MM` hoặc `YYYY-Q1` đến `YYYY-Q4`. `--form-version` chỉ nhận `80/2021/TT-BTC` hoặc `89/2026/TT-BTC`, bắt buộc khi muốn tạo dòng tờ khai và được kiểm tra theo ngày hiệu lực; không tự chọn theo kỳ. `--law-watch-report` bắt buộc khi chọn mẫu. Phải xác nhận phạm vi người nộp thuế và hồ sơ lần đầu. Chỉ dùng `--invoice-data-complete` sau khi xác nhận nguồn bao phủ đầy đủ kỳ; nếu thiếu cờ, dòng không có hóa đơn giữ `null`, không đổi thành 0. Tệp `--supplemental-form-inputs` phải là JSON có `amount` và `source` cho từng chỉ tiêu ngoài hóa đơn `[22]`, `[25]`, `[37]`, `[38]`, `[39a]`, `[40b]`, `[42]`; không tự điền 0. Cột `form_line_code`/`form_tax_line_code` phải được kế toán/BM03 rà soát. Thuế suất không được dùng để suy loại hàng. Nếu thiếu mã, phần tờ khai được đánh dấu thiếu ánh xạ. Nếu không chọn `--output`, chương trình tạo `.vat-draft.json` cạnh nguồn, không ghi vào workbook.
 
+Để xuất PDF dự thảo mẫu 01/GTGT, cần chọn `--form-version`, truyền report law-watch đã đạt, xác nhận `--taxpayer-case credit_method_production_business` và `--filing-type first`, sau đó dùng `--output "du-thao-01-GTGT.pdf"`. Có thể truyền `--taxpayer-name` để điền tên đúng theo hồ sơ; tên không được suy ra từ hóa đơn. Mẫu TT80 áp dụng lớp cập nhật địa chỉ TT40 từ kỳ 07/2025; mẫu TT89 dùng từ kỳ 07/2026 khi rà soát phạm vi cho phép. Kết quả vẫn là dự thảo, không ký, không nộp và không tạo XML.
+
 Để xuất workbook soát xét nội bộ, dùng `--output "ket-qua-soat-xet.xlsx"`. Các ô được ghi dưới dạng chuỗi, workbook không chứa công thức và tệp nguồn chỉ được đọc. Workbook này không sao chép mẫu pháp định, không sẵn sàng nộp và không thay cho bước `BM02`.
+
+PDF là bản chồng dữ liệu lên đúng hai trang mẫu Công báo/Chính phủ đã kiểm tra; không phải tệp XLSX điện tử của cơ quan thuế. Chỉ tiêu thiếu nguồn giữ trống. Bất kỳ phát hiện mức chặn hoặc rà soát pháp lý/phạm vi chưa đạt đều ngăn xuất PDF. Người lập vẫn phải kiểm tra từng ô, kỳ khai, số liệu nguồn và mẫu trước khi sử dụng.
 
 ## Tình trạng mẫu pháp định
 
@@ -50,5 +56,5 @@ uv run --project backend python resources/example-skills/accounting-vat-return/s
 ## Giới hạn hiện tại
 
 - Đã hỗ trợ nhập `.xlsx`/`.csv`, giữ mã dạng chuỗi và số 0 đầu, phân loại theo MST, kiểm tra hóa đơn, tổng hợp, ánh xạ mã dòng được chỉ định tường minh, tính công thức và soát độc lập. Các chỉ tiêu ngoài hóa đơn `[22]`, `[25]`, `[37]`, `[38]`, `[39a]`, `[40b]`, `[42]` không có nguồn sẽ để trống và khiến phép tính chưa hoàn tất. Dòng hóa đơn không gán được chỉ tiêu không được tự đổi thành 0.
-- Đọc XML hóa đơn/PDF/ảnh, đối chiếu sổ 133/33311, sao chép/điền workbook pháp định bảo toàn định dạng, ánh xạ phụ lục, xuất XLSX pháp định, kiểm tra XML theo schema, tạo/ký/gửi tờ khai và xử lý khai bổ sung là **NOT STARTED**.
+- Đọc XML hóa đơn/PDF/ảnh, đối chiếu sổ 133/33311, điền workbook pháp định, ánh xạ phụ lục, kiểm tra XML theo schema, tạo/ký/gửi tờ khai và xử lý khai bổ sung là **NOT STARTED**. PDF hiện chỉ là lớp dự thảo có watermark trên mẫu chính thức.
 - Không dùng dữ liệu thực trong test. Không đưa tệp hóa đơn, mã số thuế, tên doanh nghiệp hoặc token lên repository.

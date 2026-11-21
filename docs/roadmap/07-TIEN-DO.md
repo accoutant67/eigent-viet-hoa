@@ -4,23 +4,23 @@
 
 **PR #1:** `codex/accounting-workbook-audit-mvp`
 
-**Nhánh GTGT:** `codex/vat-return-mvp`
+**Nhánh GTGT:** `codex/vat-official-form-draft` (stacked sau PR #3 `codex/vat-form-mapping-draft`)
 
 | Giai đoạn | Nội dung                         | Trạng thái hiện tại                                                                                                                                                                                                            |
 | --------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1         | Kiểm kê và hoàn thiện Việt hóa   | Bản dịch còn một phần; kiểm tra tĩnh có bằng chứng, chưa nghiệm thu độ phủ hoặc GUI.                                                                                                                                           |
 | 2         | Không gian kế toán và điều hướng | Chưa triển khai giao diện Kế toán; kiểm thử GUI BLOCKED.                                                                                                                                                                       |
 | 3         | Agents kế toán                   | Chưa đăng ký 72 Agents rỗng. Các mã vai trò trong Skill GTGT không phải Agent đã tạo.                                                                                                                                          |
-| 4         | Skills và xử lý dữ liệu          | Excel audit 8/8; law-watch 16/16; VAT draft 33/33; Skill integration 1/1; JSON + XLSX soát xét nội bộ PASS. Nguồn live 10/11 PASS, 1 BLOCKED (MOF guide). Full backend CI 4.595 passed, 11 skipped, 110 warnings, 11 subtests. |
+| 4         | Skills và xử lý dữ liệu          | Excel audit 8/8; VAT suite 39/39 gồm xuất PDF; Skill integration 1/1; JSON/XLSX nội bộ/PDF dự thảo PASS. Law-watch regression 13/13 cục bộ; nguồn live gần nhất 10/11 PASS, 1 BLOCKED (MOF guide). |
 | 5         | Kiểm thử đầu-cuối và build       | Web/backend smoke, ChatBox rollback 1.113/1.113, i18n/type-check, Electron preview/relay PASS trên CI final head `ea6ec66`; GUI Eigent thật vẫn BLOCKED.                                                                       |
 
 ## Công việc đang tiếp tục
 
-PR #1 vẫn mở/draft, chưa merge. PR #2 tiếp tục trên `codex/vat-return-mvp`, mã nguồn được kiểm thử tại `42e61a0f57f4432463d58f422982c413ec64fb04`; [Test 44879664945](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44879664945), [VAT 44879664953](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44879664953), [law-watch 44879664955](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44879664955) PASS. Lỗi CI ở commit `1115f59` (fixture XML khai báo namespace trùng) đã sửa và kiểm tra lại. Báo cáo chi tiết gồm lệnh, môi trường, log, kết quả PASS/FAIL/BLOCKED và phần chưa triển khai nằm trong [báo cáo kiểm thử](./06-KIEM-THU.md).
+PR #1 vẫn mở/draft, chưa merge; head `215805fce6c7ed1c48305a6661a48eb9762212eb`, các workflow Test, workbook audit, law-watch, CodeQL, pre-commit và markdown lint đều PASS. PR #2 vẫn mở/draft trên `codex/vat-return-mvp`, head `749c8b1772d61821f69a9823adca3d505fe4e1c2`; VAT, Test và law-watch đều PASS. Không PR nào được merge.
 
-PR #3 `[fix: verify TT94 impact on 01/GTGT applicability](https://github.com/accoutant67/eigent-viet-hoa/pull/3)` là draft, xếp sau PR #2, head `ea6ec66d8c6e89f5bcdaf08374aca14558543b9c`. Nó ghi nhận toàn văn TT94 đã đọc trên Công báo, cho phép xét TT80 Q4/2025 khi đầy đủ kiểm tra phạm vi/kỳ/law-watch, và thêm smoke cho hai kỳ TT80/TT89. [VAT Action 44891483469](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44891483469) và [Test Action 44891483474](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/44891483474) **PASS**; Test xác nhận full backend 4.595 passed, ChatBox 1.113/1.113, web smoke, frontend guardrails và Electron preview/relay.
+PR #3 [`fix: verify TT94 impact on 01/GTGT applicability`](https://github.com/accoutant67/eigent-viet-hoa/pull/3) là draft, xếp sau PR #2, head `17de3db204418a77af34d72fe1940a2347886fd7`. Test `44895003035`, VAT `44895003041` và law-watch `44895003017` đều PASS. PR #4 tiếp tục trên nhánh riêng sau PR #3 để giữ phạm vi PR #1 gọn.
 
-Nhánh GTGT tách khỏi PR #1. Skill `accounting-vat-return` đọc `.xlsx`/`.csv`, phân loại theo MST, soát hóa đơn/kỳ, tổng hợp, đối chiếu độc lập và xuất JSON hoặc workbook XLSX soát xét nội bộ. Workbook giữ `00017`, không chứa công thức và không sửa nguồn. Chưa sao chép/điền mẫu pháp định, chưa xuất XML và chưa nộp tờ khai.
+Nhánh GTGT tách khỏi PR #1. Skill `accounting-vat-return` đọc `.xlsx`/`.csv`, phân loại theo MST, soát hóa đơn/kỳ, tổng hợp và đối chiếu độc lập; xuất JSON/XLSX nội bộ hoặc PDF dự thảo chồng trên đúng mẫu 01/GTGT. PDF lấy tên/MST từ đầu vào tường minh, chỉ điền số tiền đã có, giữ ô thiếu trống, cập nhật nhãn và ghi chú TT40 từ kỳ 07/2025, đồng thời đóng dấu “DỰ THẢO — CHƯA KÝ — CHƯA NỘP”. Workbook pháp định, XML, ký/nộp và khai bổ sung chưa triển khai.
 
 Đã đối chiếu 01/GTGT TT80 (Phụ lục II) và TT89 (Phụ lục I, bản ký số trang PDF 241–243); TT40/2025, toàn văn TT94/2025, TT21/2026, 2551/QĐ-BTC, TT110/2026 cùng Luật GTGT 48/2024/QH15, NĐ181/2025/NĐ-CP, TT69/2025/TT-BTC. TT89 hiệu lực 01/07/2026; hồ sơ có kỳ trước ngày này dùng mẫu trước đó theo điều khoản chuyển tiếp. Toàn văn TT94 không cho thấy thay trường/công thức 01/GTGT; TT80 mapping Q4/2025 không còn bị chặn riêng bởi TT94. Hệ thống không tự chọn mẫu; một nguồn hướng dẫn CSDL của Bộ Tài chính hiện BLOCKED (HTTPError).
 
@@ -35,7 +35,7 @@ Roadmap giữ đủ 15 nhóm Skill gốc:
 | `/cap-nhat-phap-luat` | Nguồn chính thức, ngày hiệu lực, thay đổi và đề xuất           | Đang mở rộng trên law-watch hiện có                                 |
 | `/hoa-don`            | Nhập hóa đơn, mua vào/bán ra, kiểm tra điều chỉnh/thay thế     | Một phần nhập `.xlsx`/`.csv` cho GTGT; XML/PDF/ảnh NOT STARTED      |
 | `/lam-to-khai`        | GTGT, TNCN định kỳ, nghĩa vụ khác, khai bổ sung, kiểm tra/xuất | GTGT đang làm; phần còn lại NOT STARTED                             |
-| `/bieu-mau`           | Phân tích mẫu, bản trắng, ánh xạ và xuất bản sao               | Nhận diện nguồn mẫu GTGT; điền/xuất pháp định NOT STARTED           |
+| `/bieu-mau`           | Phân tích mẫu, bản trắng, ánh xạ và xuất bản sao               | Nhận diện mẫu 01/GTGT; có PDF dự thảo có watermark; XLSX pháp định/XML NOT STARTED |
 | `/kiem-tra`           | Soát chứng từ, sổ sách, thuế và BCTC độc lập                   | Chỉ có so tổng độc lập trong VAT slice; phạm vi còn lại NOT STARTED |
 | `/quyet-toan`         | TNCN/TNDN và dữ liệu năm                                       | NOT STARTED; sẽ tiếp tục sau GTGT                                   |
 | `/hach-toan`          | Định khoản, ghi sổ, điều chỉnh/khóa sổ                         | NOT STARTED                                                         |
@@ -52,7 +52,7 @@ Các nhóm người dùng bổ sung như hồ sơ nhân sự, hợp đồng/quy�
 
 ## Lộ trình kế tiếp
 
-1. Hoàn tất test và CI của nhánh GTGT; cập nhật bằng chứng và mở PR riêng dạng draft, xếp sau PR #1.
+1. Xác nhận GitHub Actions cho PR #4 về PDF dự thảo 01/GTGT; xử lý lỗi CI nếu có. Giữ PR #4 dạng draft và xếp sau PR #3.
 1. Hoàn tất đối chiếu điều khoản chuyển tiếp; thiết kế bản dự thảo có ánh xạ trường được người có chuyên môn duyệt. Chưa tạo XML cho tới khi schema chính thức được xác minh.
 1. Mở rộng nhập hóa đơn theo định dạng và trạng thái được kiểm chứng, rồi thêm quy trình TNCN quý → TNDN tạm nộp/quyết toán năm → bộ BCTC.
 1. Chuyển từng vai trò còn lại thành chức năng Eigent có công cụ, phân quyền, đầu vào/đầu ra và test; kiểm soát trùng vai trò trước khi đăng ký Agent.

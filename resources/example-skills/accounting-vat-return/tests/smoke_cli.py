@@ -10,8 +10,58 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from pypdf import PdfReader
+
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = SKILL_ROOT / "scripts" / "vat_return_draft.py"
+
+
+def run_pdf_export(
+    source: Path,
+    output: Path,
+    period: str,
+    form_version: str,
+    law_watch_report: Path,
+    supplemental_form_inputs: Path,
+) -> str:
+    run = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            str(source),
+            "--taxpayer-tax-id",
+            "0100000001",
+            "--taxpayer-name",
+            "Eigent Synthetic Co.",
+            "--period",
+            period,
+            "--form-version",
+            form_version,
+            "--taxpayer-case",
+            "credit_method_production_business",
+            "--filing-type",
+            "first",
+            "--invoice-data-complete",
+            "--law-watch-report",
+            str(law_watch_report),
+            "--supplemental-form-inputs",
+            str(supplemental_form_inputs),
+            "--output",
+            str(output),
+        ],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if run.returncode != 0:
+        raise SystemExit(run.stderr or run.stdout)
+    reader = PdfReader(output)
+    assert len(reader.pages) == 2
+    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    assert "DỰ THẢO" in text
+    assert "CHƯA NỘP" in text
+    assert "1000" in text
+    return text
 
 
 def main() -> int:
@@ -21,6 +71,8 @@ def main() -> int:
         tt80_source = root / "synthetic-invoices-tt80.csv"
         output = root / "draft.json"
         tt80_output = root / "tt80-draft.json"
+        tt89_pdf = root / "tt89-draft.pdf"
+        tt80_pdf = root / "tt80-draft.pdf"
         review_workbook = root / "review-only.xlsx"
         law_watch_report = root / "law-watch-report.json"
         supplemental_form_inputs = root / "supplemental-form-inputs.json"
@@ -166,6 +218,23 @@ def main() -> int:
         assert tt80_draft["legal_form"]["applicability_review"]["status"] == "pass"
         assert tt80_draft["form_field_draft"]["amounts"]["30"] == "1000"
         assert tt80_draft["form_field_draft"]["independent_check"]["status"] == "pass"
+        tt80_pdf_text = run_pdf_export(
+            tt80_source,
+            tt80_pdf,
+            "2025-Q4",
+            "80/2021/TT-BTC",
+            law_watch_report,
+            supplemental_form_inputs,
+        )
+        assert "Xã/phường/đặc khu" in tt80_pdf_text
+        run_pdf_export(
+            source,
+            tt89_pdf,
+            "2026-Q3",
+            "89/2026/TT-BTC",
+            law_watch_report,
+            supplemental_form_inputs,
+        )
         workbook_run = subprocess.run(
             [
                 sys.executable,
@@ -213,13 +282,13 @@ def main() -> int:
                 if name.endswith(".xml")
             )
         print(
-            "PASS: import -> classify -> validate -> aggregate -> TT80 Q4 2025 and TT89 Q3 2026 draft -> independent check -> JSON and review-only XLSX export"
+            "PASS: import -> classify -> validate -> aggregate -> TT80/TT89 review drafts -> independent check -> JSON, internal XLSX, and watermarked official-template PDF export"
         )
         print(
             "INFO: law-watch input is synthetic fixture data, not a live-source result"
         )
         print(
-            "BLOCKED as designed: official 01/GTGT XLSX mapping and XML schema are not enabled"
+            "BLOCKED as designed: official 01/GTGT XLSX export and XML schema remain disabled"
         )
     return 0
 
