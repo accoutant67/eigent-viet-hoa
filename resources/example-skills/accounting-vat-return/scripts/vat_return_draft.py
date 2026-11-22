@@ -438,11 +438,30 @@ def _xml_text(node: ET.Element, names: set[str]) -> str:
     return ""
 
 
-def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
-    """Read the explicitly supported, single-document UBL Invoice profile.
+def _xml_direct_children(node: ET.Element, local_name: str) -> list[ET.Element]:
+    return [child for child in list(node) if _xml_local_name(child.tag) == local_name]
 
-    This is a data importer, not validation against a GDT/HTKK submission schema.
-    Ambiguous multi-rate invoices are rejected instead of being flattened.
+
+def _xml_direct_text(node: ET.Element, local_name: str) -> str:
+    children = _xml_direct_children(node, local_name)
+    if not children:
+        return ""
+    return (children[0].text or "").strip()
+
+
+def _decimal_xml(value: str, field_name: str) -> Decimal:
+    try:
+        return Decimal(value)
+    except InvalidOperation as exc:
+        raise VatDraftError(f"Giá trị {field_name} trong UBL không phải số thập phân.") from exc
+
+
+def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
+    """Read the bounded UBL 2.x invoice/credit-note subset into VAT row input.
+
+    UBL 2.1 document models and schemas are normative for UBL conformance. This
+    importer extracts values, but does not claim XSD/signature validation or
+    GDT/HTKK compatibility. Unknown extension content is not executed.
     """
     max_xml_bytes = 20 * 1024 * 1024
     try:
@@ -464,77 +483,169 @@ def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
         raise VatDraftError(f"XML hóa đơn sai cú pháp: {exc}") from exc
 
     document_kind = _xml_local_name(root.tag)
-    if document_kind not in {"Invoice", "CreditNote"}:
+    namespace = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+    expected_namespace = {
+        "Invoice": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+        "CreditNote": "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
+    }
+    if document_kind not in expected_namespace or namespace != expected_namespace[document_kind]:
         raise VatDraftError(
-            "Chỉ hỗ trợ một tài liệu UBL Invoice hoặc CreditNote đơn lẻ."
+            "UNSUPPORTED_PROFILE: XML không thuộc profile UBL Invoice-2/CreditNote-2 được hỗ trợ."
         )
 
-    subtotals = [
-        item for item in root.iter()
-        if _xml_local_name(item.tag) == "TaxSubtotal"
-    ]
-    vat_rates: list[tuple[str, str, str]] = []
-    for subtotal in subtotals:
-        category = next(
-            (item for item in subtotal.iter()
-             if _xml_local_name(item.tag) == "TaxCategory"),
-            None,
-        )
-        if category is None:
-            continue
-        scheme = next(
-            (item for item in category.iter()
-             if _xml_local_name(item.tag) == "TaxScheme"),
-            None,
-        )
-        scheme_id = _xml_text(scheme, {"ID"}) if scheme is not None else ""
-        if scheme_id and scheme_id.casefold() not in {"vat", "valueaddedtax"}:
-            continue
-        taxable = _xml_text(subtotal, {"TaxableAmount"})
-        tax = _xml_text(subtotal, {"TaxAmount"})
-        percent = _xml_text(category, {"Percent"})
-        if not taxable or not tax or not percent:
-            raise VatDraftError(
-                "TaxSubtotal thiếu TaxableAmount, TaxAmount hoặc Percent; cần kế toán kiểm tra."
+    nodes = list(root.iter())
+    if len(nodes) > 100_000:
+        raise VatDraftError("XML vượt giới hạn 100.000 phần tử.")
+    stack = [(root, 1)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > 128:
+            raise VatDraftError("XML vượt giới hạn độ sâu 128.")
+        stack.extend((child, depth + 1) for child in list(node))
+
+    subtotals: list[tuple[str, str, str]] = []
+    tax_totals = _xml_direct_children(root, "TaxTotal")
+    for tax_total in tax_totals:
+        for subtotal in _xml_direct_children(tax_total, "TaxSubtotal"):
+            category = next(
+                iter(_xml_direct_children(subtotal, "TaxCategory")), None
             )
-        try:
-            rate_value = Decimal(percent)
-            Decimal(taxable)
-            Decimal(tax)
-        except InvalidOperation as exc:
-            raise VatDraftError("Số tiền hoặc thuế suất trong XML không hợp lệ.") from exc
-        vat_rates.append((taxable, tax, f"{money_text(rate_value)}%"))
-    if len(vat_rates) != 1:
-        raise VatDraftError(
-            "Hồ sơ UBL phải có đúng một TaxSubtotal thuế GTGT; hóa đơn nhiều mức thuế chưa được hỗ trợ."
-        )
+            if category is None:
+                continue
+            scheme = next(iter(_xml_direct_children(category, "TaxScheme")), None)
+            scheme_id = _xml_direct_text(scheme, "ID") if scheme is not None else ""
+            if scheme_id and scheme_id.casefold() not in {"vat", "valueaddedtax"}:
+                continue
+            taxable = _xml_direct_text(subtotal, "TaxableAmount")
+            tax = _xml_direct_text(subtotal, "TaxAmount")
+            percent = _xml_direct_text(category, "Percent")
+            if not taxable or not tax or not percent:
+                raise VatDraftError(
+                    "TaxSubtotal thuế GTGT thiếu TaxableAmount, TaxAmount hoặc Percent."
+                )
+            rate_value = _decimal_xml(percent, "Percent")
+            _decimal_xml(taxable, "TaxableAmount")
+            _decimal_xml(tax, "TaxAmount")
+            subtotals.append((taxable, tax, f"{money_text(rate_value)}%"))
+    if not subtotals:
+        raise VatDraftError("UBL không có TaxSubtotal VAT được nhận diện.")
+
+    tax_breakdown = [
+        {
+            "rate_label": rate,
+            "taxable_amount": money_text(_decimal_xml(net, "TaxableAmount")),
+            "tax_amount": money_text(_decimal_xml(tax, "TaxAmount")),
+        }
+        for net, tax, rate in subtotals
+    ]
+    net_total_node = next(iter(_xml_direct_children(
+        next(iter(_xml_direct_children(root, "LegalMonetaryTotal")), root),
+        "TaxExclusiveAmount",
+    )), None)
+    net_total = (net_total_node.text or "").strip() if net_total_node is not None else ""
+    if not net_total:
+        net_total = money_text(sum((_decimal_xml(row[0], "TaxableAmount") for row in subtotals), Decimal(0)))
+    tax_total_values = [
+        _xml_direct_text(total, "TaxAmount")
+        for total in tax_totals
+        if _xml_direct_text(total, "TaxAmount")
+    ]
+    tax_total_value = (
+        money_text(sum((_decimal_xml(value, "TaxAmount") for value in tax_total_values), Decimal(0)))
+        if tax_total_values
+        else money_text(sum((_decimal_xml(row[1], "TaxAmount") for row in subtotals), Decimal(0)))
+    )
+    rates = sorted({row[2] for row in subtotals})
+    tax_rate = rates[0] if len(rates) == 1 else "MULTIPLE"
 
     def party_values(party_name: str) -> tuple[str, str]:
-        party = next(
-            (item for item in root.iter()
-             if _xml_local_name(item.tag) == party_name),
-            None,
-        )
-        if party is None:
+        party_container = next(iter(_xml_direct_children(root, party_name)), None)
+        if party_container is None:
             return "", ""
-        tax_scheme = next(
-            (item for item in party.iter()
-             if _xml_local_name(item.tag) == "PartyTaxScheme"),
-            None,
-        )
-        tax_id = _xml_text(tax_scheme, {"CompanyID"}) if tax_scheme is not None else ""
-        name = _xml_text(party, {"RegistrationName", "Name"})
+        party = next(iter(_xml_direct_children(party_container, "Party")), party_container)
+        tax_schemes = _xml_direct_children(party, "PartyTaxScheme")
+        tax_id = ""
+        if tax_schemes:
+            tax_id = _xml_direct_text(tax_schemes[0], "CompanyID")
+        if not tax_id:
+            legal_entities = _xml_direct_children(party, "PartyLegalEntity")
+            tax_id = _xml_direct_text(legal_entities[0], "CompanyID") if legal_entities else ""
+        name = ""
+        for container_name in ("PartyLegalEntity", "PartyName"):
+            containers = _xml_direct_children(party, container_name)
+            if containers:
+                name = _xml_direct_text(containers[0], "RegistrationName") or _xml_direct_text(containers[0], "Name")
+                if name:
+                    break
         return tax_id, name
 
     seller_tax_id, seller_name = party_values("AccountingSupplierParty")
     buyer_tax_id, buyer_name = party_values("AccountingCustomerParty")
-    date_value = _xml_text(root, {"IssueDate"})
-    invoice_number = _xml_text(root, {"ID"})
-    explicit_series = _xml_text(root, {"InvoiceSeries", "InvoiceSeriesID", "Series"})
-    net_amount, tax_amount, tax_rate = vat_rates[0]
-    gross_amount = _xml_text(root, {"PayableAmount"})
-    if not gross_amount:
+    date_value = _xml_direct_text(root, "IssueDate")
+    invoice_number = _xml_direct_text(root, "ID")
+    explicit_series = ""
+    for extension in _xml_direct_children(root, "UBLExtensions"):
+        explicit_series = _xml_direct_text(extension, "InvoiceSeries")
+        if explicit_series:
+            break
+
+    legal_totals = next(iter(_xml_direct_children(root, "LegalMonetaryTotal")), None)
+    payable = _xml_direct_text(legal_totals, "PayableAmount") if legal_totals is not None else ""
+    if not payable:
         raise VatDraftError("XML thiếu PayableAmount; không tự tính tổng thanh toán.")
+
+    line_name = "InvoiceLine" if document_kind == "Invoice" else "CreditNoteLine"
+    line_items: list[dict[str, Any]] = []
+    line_extraction_complete = True
+    for line in _xml_direct_children(root, line_name):
+        item_node = next(iter(_xml_direct_children(line, "Item")), None)
+        price_node = next(iter(_xml_direct_children(line, "Price")), None)
+        quantity_name = "InvoicedQuantity" if document_kind == "Invoice" else "CreditedQuantity"
+        quantity = _xml_direct_text(line, quantity_name)
+        line_amount = _xml_direct_text(line, "LineExtensionAmount")
+        unit_price = _xml_direct_text(price_node, "PriceAmount") if price_node is not None else ""
+        description = ""
+        if item_node is not None:
+            description = _xml_direct_text(item_node, "Description")
+            if not description:
+                description = _xml_direct_text(item_node, "Name")
+        line_tax_rate = ""
+        line_tax_amount = ""
+        line_tax_totals = _xml_direct_children(line, "TaxTotal")
+        if line_tax_totals:
+            line_tax_amount = _xml_direct_text(line_tax_totals[0], "TaxAmount")
+            subtotals_for_line = _xml_direct_children(line_tax_totals[0], "TaxSubtotal")
+            if subtotals_for_line:
+                category = next(iter(_xml_direct_children(subtotals_for_line[0], "TaxCategory")), None)
+                line_tax_rate = _xml_direct_text(category, "Percent") if category is not None else ""
+        line_id = _xml_direct_text(line, "ID")
+        line_items.append({
+            "description": description or None,
+            "quantity": money_text(_decimal_xml(quantity, "Quantity")) if quantity else None,
+            "unit": _xml_direct_text(line, quantity_name) and (
+                next(iter(_xml_direct_children(line, quantity_name))).attrib.get("unitCode")
+            ) or None,
+            "unit_price": money_text(_decimal_xml(unit_price, "PriceAmount")) if unit_price else None,
+            "net_amount": money_text(_decimal_xml(line_amount, "LineExtensionAmount")) if line_amount else None,
+            "tax_rate_label": f"{money_text(_decimal_xml(line_tax_rate, 'Percent'))}%" if line_tax_rate else None,
+            "tax_amount": money_text(_decimal_xml(line_tax_amount, "TaxAmount")) if line_tax_amount else None,
+            "source_line_id": line_id or None,
+        })
+        if not all((quantity, unit_price, line_amount, line_tax_rate, line_tax_amount)):
+            line_extraction_complete = False
+
+    references: list[dict[str, Any]] = []
+    for billing_reference in _xml_direct_children(root, "BillingReference"):
+        invoice_ref = next(iter(_xml_direct_children(billing_reference, "InvoiceDocumentReference")), None)
+        if invoice_ref is not None:
+            ref_id = _xml_direct_text(invoice_ref, "ID")
+            ref_date = _xml_direct_text(invoice_ref, "IssueDate")
+            if ref_id:
+                references.append({
+                    "reference_kind": "billing_reference",
+                    "identifier": ref_id,
+                    "issued_at": ref_date or None,
+                })
 
     raw = {
         "invoice_date": date_value,
@@ -544,18 +655,22 @@ def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
         "buyer_name": buyer_name,
         "invoice_series": explicit_series,
         "invoice_number": invoice_number,
-        "net_amount": net_amount,
+        "net_amount": net_total,
         "tax_rate": tax_rate,
-        "tax_amount": tax_amount,
-        "gross_amount": gross_amount,
+        "tax_amount": tax_total_value,
+        "gross_amount": payable,
         "status": "adjusted" if document_kind == "CreditNote" else "normal",
         "document_kind": "credit_note" if document_kind == "CreditNote" else "invoice",
-        "source_profile": "oasis-ubl-2-single-vat-subtotal-v1",
+        "source_profile": f"oasis-ubl-2-{document_kind.casefold()}-vat-v2",
         "source_sha256": hashlib.sha256(payload).hexdigest(),
         "source_name": path.name,
+        "tax_breakdown": tax_breakdown,
+        "line_items": line_items,
+        "line_items_extraction_status": "complete" if line_extraction_complete and line_items else ("not_extracted" if not line_items else "partial"),
+        "references": references,
+        "relationships_extraction_status": "complete" if references else "not_extracted",
     }
     return [{"source_row": 1, "raw": raw, "formula_fields": []}]
-
 
 def read_invoice_rows(
     path: str | Path,
@@ -1100,9 +1215,20 @@ def _normalized_document_record(
     document_kind = raw.get("document_kind")
     if document_kind not in {"invoice", "credit_note"}:
         document_kind = "unspecified"
-    net_amount = record.get("net_amount")
-    tax_amount = record.get("tax_amount")
     source_trace = record["source_trace"]
+    tax_breakdown = raw.get("tax_breakdown")
+    if not isinstance(tax_breakdown, list):
+        tax_breakdown = [{
+            "rate_label": record.get("tax_rate_label") or None,
+            "taxable_amount": record.get("net_amount"),
+            "tax_amount": record.get("tax_amount"),
+        }]
+    line_items = raw.get("line_items")
+    if not isinstance(line_items, list):
+        line_items = []
+    references = raw.get("references")
+    if not isinstance(references, list):
+        references = []
     return {
         "schema_version": "1.0.0",
         "document_kind": document_kind,
@@ -1122,19 +1248,19 @@ def _normalized_document_record(
             },
         },
         "amounts": {
-            "net": net_amount,
-            "tax": tax_amount,
+            "net": record.get("net_amount"),
+            "tax": record.get("tax_amount"),
             "gross": record.get("gross_amount"),
         },
-        "tax_breakdown": [
-            {
-                "rate_label": record.get("tax_rate_label") or None,
-                "taxable_amount": net_amount,
-                "tax_amount": tax_amount,
-            }
-        ],
-        "line_items": {"extraction_status": "not_extracted"},
-        "relationships": {"extraction_status": "not_extracted"},
+        "tax_breakdown": tax_breakdown,
+        "line_items": {
+            "extraction_status": raw.get("line_items_extraction_status", "not_extracted"),
+            **({"items": line_items} if line_items else {}),
+        },
+        "relationships": {
+            "extraction_status": raw.get("relationships_extraction_status", "not_extracted"),
+            **({"references": references} if references else {}),
+        },
         "source": {
             "file_name": source_trace.get("source_name"),
             "source_row": source_trace.get("source_row"),

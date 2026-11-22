@@ -909,13 +909,78 @@ class VatInvoiceXmlTests(unittest.TestCase):
             record["review_reasons"],
         )
 
-    def test_rejects_xml_with_multiple_vat_rates(self) -> None:
+    def test_reads_multiple_vat_subtotals_without_flattening_tax_breakdown(self) -> None:
         second = """<cac:TaxSubtotal><cbc:TaxableAmount>200</cbc:TaxableAmount>
         <cbc:TaxAmount>20</cbc:TaxAmount><cac:TaxCategory><cbc:Percent>10</cbc:Percent>
         <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>"""
-        source = self.write_xml("synthetic-multirate.xml", self.invoice(second))
-        with self.assertRaisesRegex(vat.VatDraftError, "một TaxSubtotal"):
+        xml = self.invoice(second).replace(
+            '<cbc:TaxAmount currencyID="VND">50</cbc:TaxAmount>',
+            '<cbc:TaxAmount currencyID="VND">70</cbc:TaxAmount>', 1
+        ).replace(
+            '<cbc:PayableAmount currencyID="VND">1050</cbc:PayableAmount>',
+            '<cbc:TaxExclusiveAmount currencyID="VND">1200</cbc:TaxExclusiveAmount>'
+            '<cbc:PayableAmount currencyID="VND">1270</cbc:PayableAmount>'
+        )
+        source = self.write_xml("synthetic-multirate.xml", xml)
+        row = vat.read_invoice_rows(source)[0]["raw"]
+        self.assertEqual(row["net_amount"], "1200")
+        self.assertEqual(row["tax_amount"], "70")
+        self.assertEqual(row["gross_amount"], "1270")
+        self.assertEqual(row["tax_rate"], "MULTIPLE")
+        self.assertEqual(
+            row["tax_breakdown"],
+            [
+                {"rate_label": "5%", "taxable_amount": "1000", "tax_amount": "50"},
+                {"rate_label": "10%", "taxable_amount": "200", "tax_amount": "20"},
+            ],
+        )
+        draft = vat.build_draft(source, "0100000001", "2026-08")
+        normalized = draft["records"][0]["normalized_document"]
+        schema_path = Path(__file__).resolve().parents[3] / "accounting-data-model" / "v1" / "invoice-record.schema.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator(schema).validate(normalized)
+        self.assertEqual(len(normalized["tax_breakdown"]), 2)
+
+    def test_extracts_ubl_lines_and_billing_reference(self) -> None:
+        line = """<cac:InvoiceLine><cbc:ID>00017</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="HOUR">2.500</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="VND">250.125</cbc:LineExtensionAmount>
+        <cac:Item><cbc:Description>Dịch vụ kế toán</cbc:Description>
+        <cac:ClassifiedTaxCategory><cbc:Percent>5</cbc:Percent></cac:ClassifiedTaxCategory></cac:Item>
+        <cac:Price><cbc:PriceAmount currencyID="VND">100.05</cbc:PriceAmount></cac:Price>
+        <cac:TaxTotal><cbc:TaxAmount currencyID="VND">12.50625</cbc:TaxAmount>
+        <cac:TaxSubtotal><cac:TaxCategory><cbc:Percent>5</cbc:Percent></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal>
+        </cac:InvoiceLine>"""
+        xml = self.invoice().replace("</Invoice>", line + """
+        <cac:BillingReference><cac:InvoiceDocumentReference>
+        <cbc:ID>00009</cbc:ID><cbc:IssueDate>2026-07-01</cbc:IssueDate>
+        </cac:InvoiceDocumentReference></cac:BillingReference></Invoice>""")
+        source = self.write_xml("synthetic-line-reference.xml", xml)
+        draft = vat.build_draft(source, "0100000001", "2026-08")
+        normalized = draft["records"][0]["normalized_document"]
+        self.assertEqual(normalized["line_items"]["extraction_status"], "complete")
+        line_record = normalized["line_items"]["items"][0]
+        self.assertEqual(line_record["source_line_id"], "00017")
+        self.assertEqual(line_record["quantity"], "2.5")
+        self.assertEqual(line_record["unit_price"], "100.05")
+        self.assertEqual(line_record["net_amount"], "250.125")
+        self.assertEqual(line_record["tax_rate_label"], "5%")
+        self.assertEqual(line_record["tax_amount"], "12.50625")
+        self.assertEqual(line_record["description"], "Dịch vụ kế toán")
+        self.assertEqual(normalized["relationships"]["references"][0]["identifier"], "00009")
+
+    def test_rejects_xml_with_unverified_root_namespace(self) -> None:
+        source = self.write_xml(
+            "not-ubl.xml", '<Invoice><ID>1</ID></Invoice>'
+        )
+        with self.assertRaisesRegex(vat.VatDraftError, "UNSUPPORTED_PROFILE"):
             vat.read_invoice_rows(source)
+
+    def test_mixed_invoice_import_does_not_change_source_bytes(self) -> None:
+        source = self.write_xml("immutable-source.xml", self.invoice())
+        before = source.read_bytes()
+        vat.read_invoice_rows(source)
+        self.assertEqual(source.read_bytes(), before)
 
     def test_rejects_dtd_and_entity_xml(self) -> None:
         source = self.write_xml(
@@ -966,7 +1031,10 @@ class VatInvoiceXmlTests(unittest.TestCase):
         self.assertNotIn("references", normalized["relationships"])
 
     def test_credit_note_is_marked_for_review_and_not_assumed_original(self) -> None:
-        xml = self.invoice().replace("<Invoice ", "<CreditNote ", 1).replace(
+        xml = self.invoice().replace(
+            "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+            "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
+        ).replace("<Invoice ", "<CreditNote ", 1).replace(
             "</Invoice>", "</CreditNote>"
         )
         source = self.write_xml("synthetic-credit-note.xml", xml)

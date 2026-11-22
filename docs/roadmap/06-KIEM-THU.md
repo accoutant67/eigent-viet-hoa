@@ -147,3 +147,24 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 PR #2 bổ sung hợp đồng schema hóa đơn phiên bản 1.0.0 tại `resources/accounting-data-model/v1/invoice-record.schema.json`; record GTGT phát ra `normalized_document` theo hợp đồng này và gắn SHA-256 cho file nguồn cùng dòng nguồn. Schema có các primitive tái dùng cho party, organization, person, monetary amount, effective period và source trace. Chỉ profile XML UBL đơn/một VAT subtotal được đánh dấu `invoice` hoặc `credit_note`; CSV/XLSX không có căn cứ loại chứng từ được ghi `unspecified`. Dòng hàng và quan hệ hóa đơn chưa được parser trích xuất thì đánh dấu `not_extracted`.
 
 Đây là bước nền tảng đầu tiên, chưa phải mô hình đã triển khai cho nhân sự, sổ kế toán hoặc doanh nghiệp. Catalog biểu mẫu VAT theo TT80/TT89 và law-watch được tái sử dụng; registry chung về đối tượng áp dụng/kỳ chuyển tiếp, ánh xạ mẫu chia sẻ và adapter riêng cho Thuế/BHXH/BCTC vẫn còn thiếu. Không thay đổi bộ tổng hợp hiện tại hay tạo XML tờ khai.
+
+
+## Cập nhật tiếp nối — XML UBL và CI commit 991142b (22/11/2026)
+
+### Xác minh trước thay đổi
+
+- Tài khoản GitHub kết nối là `accoutant67`; repository `accoutant67/eigent-viet-hoa` truy cập được với quyền push. Nhánh `codex/vat-return-mvp` vẫn là head của PR #2; PR Open/Draft, chưa merge. Head kiểm tra trước thay đổi: `991142bfaf4e21b822b370eea4074b8b01d6659e`.
+- Trạng thái Actions đọc lại trên commit `991142b`: Accounting VAT return draft **COMPLETED / SUCCESS**; Accounting law watch **COMPLETED / SUCCESS**; Test **IN_PROGRESS** (run [45033792711](https://github.com/accoutant67/eigent-viet-hoa/actions/runs/45033792711)). Chưa có kết luận cuối cho Test cũ.
+- Không có Git hoặc Python trong thư mục làm việc hiện tại; kiểm thử cục bộ bị **BLOCKED**. Kiểm thử sẽ dựa vào Actions trên commit mới và chỉ được kết luận theo trạng thái hoàn tất.
+
+### Nguồn UBL và giới hạn profile
+
+- OASIS UBL 2.1 specification xác định bộ XSD UBL 2.1 là các biểu diễn normative cho document types/components, và liệt kê schema riêng cho Invoice/CreditNote. Nguồn: [OASIS Universal Business Language 2.1](https://docs.oasis-open.org/ubl/os-UBL-2.1/UBL-2.1.html).
+- Phạm vi triển khai ở đây là phần tử UBL Invoice-2/CreditNote-2 trong namespace chuẩn và các trường có cấu trúc nêu trong bộ dữ liệu giả lập. Đây không phải adapter XML hóa đơn Việt Nam, không xác thực XSD, chữ ký số hoặc khả năng nộp GDT/HTKK/eTax. XML nhà cung cấp Việt Nam và XML tờ khai vẫn chưa được nhận dạng như profile được hỗ trợ.
+
+### Thay đổi parser và kiểm thử trên commit kế tiếp
+
+- Mở rộng parser UBL để đọc TaxSubtotal VAT nhiều mức, tổng trước thuế/thuế/tổng thanh toán hiện diện trong nguồn, InvoiceLine/CreditNoteLine (mô tả, số lượng, đơn vị, đơn giá, thành tiền, thuế suất, thuế dòng và mã dòng), và BillingReference/InvoiceDocumentReference.
+- Đưa breakdown, dòng hàng, tham chiếu vào hợp đồng invoice-record 1.0.0 hiện có; không đổi schema. Trường vắng tiếp tục giữ null hoặc trạng thái `not_extracted`; không tạo số tiền. Thuế suất nhiều nhóm được gắn nhãn `MULTIPLE` ở hàng VAT và breakdown chi tiết được bảo toàn, không phân bổ suy đoán theo dòng.
+- Fixture giả lập bổ sung kiểm tra nhiều mức thuế, số thập phân, tiếng Việt, mã dòng `00017`, tham chiếu hóa đơn gốc, namespace không hỗ trợ và bất biến byte file nguồn. Cập nhật test cũ vốn kỳ vọng từ chối multi-rate.
+- **Kết quả kiểm thử của commit mới: CHƯA CHẠY** cho đến khi Actions hoàn tất. Ghi trạng thái VAT, law-watch, Test, regression và smoke vào đây sau khi có kết quả CI. GUI Eigent thật vẫn **BLOCKED** nếu chưa có môi trường GUI để thao tác trực tiếp.
