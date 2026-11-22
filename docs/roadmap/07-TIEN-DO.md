@@ -57,3 +57,8 @@ Các nhóm người dùng bổ sung như hồ sơ nhân sự, hợp đồng/quy�
 1. Mở GUI Eigent/Chat AI/đổi ngôn ngữ để nghiệm thu khi có môi trường GUI và cấu hình model hợp lệ; giữ BLOCKED cho tới lúc đó.
 
 Không gộp các trạng thái đã viết mã, test cục bộ, CI đạt, đã chạy ứng dụng và đã nghiệm thu nghiệp vụ thành một kết luận.
+
+
+## Bổ sung kiến trúc chung — 22/11/2026
+
+Trên nhánh `codex/vat-return-mvp`, PR #2 thêm schema version hóa cho record hóa đơn cùng party/source primitives và đưa record VAT chuẩn hóa vào output. Chưa xem đây là mô hình đã triển khai cho lương, nhân sự, doanh nghiệp hoặc sổ kế toán. Kế hoạch còn lại: mở rộng các profile XML được xác minh, hoàn thiện metadata hiệu lực/đối tượng áp dụng cho registry pháp luật/mẫu, rồi tách adapter xuất theo Thuế, BHXH và BCTC trong khi tái sử dụng hợp đồng và trace. Kết quả CI của commit mới sẽ được ghi sau khi GitHub Actions hoàn tất.

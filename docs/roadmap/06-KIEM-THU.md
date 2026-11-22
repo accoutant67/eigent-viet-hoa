@@ -140,3 +140,10 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - **NOT STARTED:** XML/PDF/ảnh hóa đơn; đối chiếu sổ 133/33311; sao chép/điền workbook 01/GTGT pháp định; ánh xạ đầy đủ các trường/phụ lục theo nghiệp vụ và case; XML schema chính thức; ký/gửi/kê khai bổ sung; TNCN quý; TNDN tạm nộp/quyết toán; bộ BCTC.
 - Chỉ dùng fixture tổng hợp. Không có dữ liệu hóa đơn doanh nghiệp trong test.
 - Roadmap giữ 72 ID bot và 15 Skills; 66 prompt vai trò trong tài liệu Skill là danh mục khác với 72 ID bot. Pipeline GTGT hiện sử dụng 14 vai trò HD01–HD04, TK01/TK05, BM01–BM03, PL01–PL04 và KTT03 trong một Skill; chưa tạo 72 Agent rỗng hoặc Agent trùng chức năng.
+
+
+## Cập nhật kiến trúc dùng chung — 22/11/2026
+
+PR #2 bổ sung hợp đồng schema hóa đơn phiên bản 1.0.0 tại `resources/accounting-data-model/v1/invoice-record.schema.json`; record GTGT phát ra `normalized_document` theo hợp đồng này và gắn SHA-256 cho file nguồn cùng dòng nguồn. Schema có các primitive tái dùng cho party, organization, person, monetary amount, effective period và source trace. Chỉ profile XML UBL đơn/một VAT subtotal được đánh dấu `invoice` hoặc `credit_note`; CSV/XLSX không có căn cứ loại chứng từ được ghi `unspecified`. Dòng hàng và quan hệ hóa đơn chưa được parser trích xuất thì đánh dấu `not_extracted`.
+
+Đây là bước nền tảng đầu tiên, chưa phải mô hình đã triển khai cho nhân sự, sổ kế toán hoặc doanh nghiệp. Catalog biểu mẫu VAT theo TT80/TT89 và law-watch được tái sử dụng; registry chung về đối tượng áp dụng/kỳ chuyển tiếp, ánh xạ mẫu chia sẻ và adapter riêng cho Thuế/BHXH/BCTC vẫn còn thiếu. Không thay đổi bộ tổng hợp hiện tại hay tạo XML tờ khai.

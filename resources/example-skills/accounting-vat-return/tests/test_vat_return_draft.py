@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import jsonschema
 import sys
 import tempfile
 import unittest
@@ -931,6 +932,38 @@ class VatInvoiceXmlTests(unittest.TestCase):
             vat.read_invoice_rows(malformed)
         with self.assertRaisesRegex(vat.VatDraftError, "TaxSubtotal"):
             vat.read_invoice_rows(unsupported)
+
+    def test_normalized_invoice_uses_shared_schema_and_preserves_source_values(self) -> None:
+        schema_path = (
+            Path(__file__).resolve().parents[3]
+            / "accounting-data-model"
+            / "v1"
+            / "invoice-record.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator.check_schema(schema)
+        source = self.write_xml(
+            "synthetic-leading-zero.xml",
+            self.invoice().replace("<cbc:ID>INV-001</cbc:ID>", "<cbc:ID>00017</cbc:ID>"),
+        )
+        draft = vat.build_draft(source, "0100000001", "2026-08")
+        normalized = draft["records"][0]["normalized_document"]
+        errors = list(jsonschema.Draft202012Validator(schema).iter_errors(normalized))
+        self.assertEqual(errors, [])
+        self.assertEqual(normalized["identifier"]["number"], "00017")
+        self.assertEqual(normalized["parties"]["buyer"]["tax_id"], "0100000001")
+        self.assertEqual(normalized["amounts"]["net"], "1000")
+        self.assertEqual(
+            normalized["source"]["sha256"],
+            vat.hashlib.sha256(source.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(
+            normalized["source"]["parser_profile"],
+            "oasis-ubl-2-single-vat-subtotal-v1",
+        )
+        self.assertEqual(normalized["line_items"]["extraction_status"], "not_extracted")
+        self.assertEqual(normalized["relationships"]["extraction_status"], "not_extracted")
+        self.assertNotIn("references", normalized["relationships"])
 
     def test_credit_note_is_marked_for_review_and_not_assumed_original(self) -> None:
         xml = self.invoice().replace("<Invoice ", "<CreditNote ", 1).replace(

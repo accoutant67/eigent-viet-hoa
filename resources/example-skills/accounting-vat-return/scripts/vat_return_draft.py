@@ -549,6 +549,8 @@ def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
         "tax_amount": tax_amount,
         "gross_amount": gross_amount,
         "status": "adjusted" if document_kind == "CreditNote" else "normal",
+        "document_kind": "credit_note" if document_kind == "CreditNote" else "invoice",
+        "source_profile": "oasis-ubl-2-single-vat-subtotal-v1",
         "source_sha256": hashlib.sha256(payload).hexdigest(),
         "source_name": path.name,
     }
@@ -1090,6 +1092,58 @@ def _period_contains(
     return invoice_date is not None and start <= invoice_date <= end
 
 
+def _normalized_document_record(
+    record: dict[str, Any], item: dict[str, Any]
+) -> dict[str, Any]:
+    """Project a VAT row into the versioned shared accounting invoice contract."""
+    raw = item.get("raw", {})
+    document_kind = raw.get("document_kind")
+    if document_kind not in {"invoice", "credit_note"}:
+        document_kind = "unspecified"
+    net_amount = record.get("net_amount")
+    tax_amount = record.get("tax_amount")
+    source_trace = record["source_trace"]
+    return {
+        "schema_version": "1.0.0",
+        "document_kind": document_kind,
+        "identifier": {
+            "number": record.get("invoice_number") or None,
+            "series": record.get("invoice_series") or None,
+        },
+        "issued_at": record.get("invoice_date") or None,
+        "parties": {
+            "seller": {
+                "tax_id": record.get("seller_tax_id") or None,
+                "name": record.get("seller_name") or None,
+            },
+            "buyer": {
+                "tax_id": record.get("buyer_tax_id") or None,
+                "name": record.get("buyer_name") or None,
+            },
+        },
+        "amounts": {
+            "net": net_amount,
+            "tax": tax_amount,
+            "gross": record.get("gross_amount"),
+        },
+        "tax_breakdown": [
+            {
+                "rate_label": record.get("tax_rate_label") or None,
+                "taxable_amount": net_amount,
+                "tax_amount": tax_amount,
+            }
+        ],
+        "line_items": {"extraction_status": "not_extracted"},
+        "relationships": {"extraction_status": "not_extracted"},
+        "source": {
+            "file_name": source_trace.get("source_name"),
+            "source_row": source_trace.get("source_row"),
+            "sha256": source_trace.get("source_sha256"),
+            "parser_profile": raw.get("source_profile", "tabular-invoice-v1"),
+        },
+    }
+
+
 def _invoice_records(
     imported: list[dict[str, Any]], taxpayer_tax_id: str, start: dt.date, end: dt.date
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -1166,6 +1220,7 @@ def _invoice_records(
             "eligible_for_draft_totals": False,
             "review_reasons": [],
         }
+        record["normalized_document"] = _normalized_document_record(record, item)
         record_errors: list[str] = []
         if declared_direction_mismatch:
             record_errors.append("declared_direction_mismatch")
@@ -1364,6 +1419,14 @@ def _independent_check(
     }
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def build_draft(
     input_path: str | Path,
     taxpayer_tax_id: str,
@@ -1381,6 +1444,10 @@ def build_draft(
     if not taxpayer_tax_id.strip():
         raise VatDraftError("Cần MST người nộp thuế để phân loại mua vào/bán ra.")
     imported = read_invoice_rows(source, sheet_name, header_row)
+    source_sha256 = _sha256_file(source)
+    for item in imported:
+        item.setdefault("source_name", source.name)
+        item.setdefault("source_sha256", source_sha256)
     records, findings = _invoice_records(imported, taxpayer_tax_id, start, end)
     law_watch_review = (
         _review_law_watch_report(law_watch_report, form_version)
