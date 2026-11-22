@@ -246,7 +246,7 @@ class VatReturnDraftTests(unittest.TestCase):
         )
         self.assertEqual(draft["legal_form"]["verified_versions"][1]["pdf_page"], 241)
         self.assertEqual(
-            draft["legal_form"]["xml_export"], "NOT_STARTED_SCHEMA_NOT_VERIFIED"
+            draft["legal_form"]["xml_export"], "DRAFT_EXPORT_IMPLEMENTED_HTKK_IMPORT_UNVERIFIED"
         )
 
     def test_xml_reader_rejects_dtd_even_after_large_leading_whitespace(self) -> None:
@@ -1060,3 +1060,72 @@ class VatInvoiceXmlTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HtkkVatXmlExportTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+
+    def _draft(self, period: str, version: str) -> dict:
+        source = self.root / "mapped.csv"
+        invoice_date = "2025-05-12" if period.endswith("Q2") else "2026-10-12"
+        source.write_text(
+            "invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status,form_line_code,form_tax_line_code\n"
+            f"{invoice_date},0100000001,0300000001,S1,00017,1000.25,5%,50.01,1050.26,Bình thường,30,31\n"
+            f"{invoice_date},0300000002,0100000001,P1,00018,2000.50,10%,200.05,2200.55,Bình thường,23,24\n",
+            encoding="utf-8",
+        )
+        law = write_law_watch_report(self.root / "law.json", version)
+        return vat.build_draft(
+            source, "0100000001", period, form_version=version, law_watch_report=law
+        )
+
+    @staticmethod
+    def _shape(node: ET.Element) -> tuple:
+        return (node.tag, tuple(node.attrib), tuple(HtkkVatXmlExportTests._shape(c) for c in list(node)))
+
+    def test_tt89_month_roundtrip_matches_sample_and_preserves_zeroes_and_decimals(self) -> None:
+        draft = self._draft("2026-10", "89/2026/TT-BTC")
+        output = vat.write_draft(draft, self.root / "return.xml")
+        reference = Path(__file__).resolve().parents[1] / "reference/htkk-5.8.5/InterfaceTemplates/xml/01_GTGT_TT89_xml_309.xml"
+        template = ET.parse(reference).getroot()
+        generated = ET.parse(output).getroot()
+        self.assertEqual(self._shape(generated), self._shape(template))
+        cycle = generated.find("./HSoKhaiThue/TTinChung/TTinTKhaiThue/TKhaiThue/KyKKhaiThue")
+        self.assertEqual(cycle.findtext("kieuKy"), "M")
+        self.assertEqual(cycle.findtext("kyKKhai"), "10/2026")
+        self.assertEqual(cycle.findtext("kyKKhaiTuThang"), "10/2026")
+        self.assertEqual(generated.findtext("./HSoKhaiThue/TTinChung/TTinTKhaiThue/NNT/mst"), "0100000001")
+        self.assertEqual(generated.findtext("./HSoKhaiThue/CTieuTKhaiChinh/HHDVBRaChiuTSuat5/ct30"), "1000.25")
+        self.assertEqual(generated.findtext("./HSoKhaiThue/CTieuTKhaiChinh/HHDVBRaChiuTSuat5/ct31"), "50.01")
+        self.assertFalse(draft["legal_form"]["submission_ready"])
+
+    def test_tt80_quarter_uses_its_template_and_quarter_period_fields(self) -> None:
+        draft = self._draft("2025-Q2", "80/2021/TT-BTC")
+        generated = ET.parse(vat.write_draft(draft, self.root / "return-tt80.xml")).getroot()
+        cycle = generated.find("./HSoKhaiThue/TTinChung/TTinTKhaiThue/TKhaiThue/KyKKhaiThue")
+        self.assertEqual(cycle.findtext("kieuKy"), "Q")
+        self.assertEqual(cycle.findtext("kyKKhai"), "Q2/2025")
+        self.assertEqual(cycle.findtext("kyKKhaiTuNgay"), "01/04/2025")
+        self.assertEqual(cycle.findtext("kyKKhaiDenNgay"), "30/06/2025")
+        self.assertIsNotNone(generated.find("./HSoKhaiThue/CTieuTKhaiChinh/Header/DiaChiHDSXKDKhacTinhNDTSC/ct11b_quanHuyen_ma"))
+
+    def test_xml_export_rejects_incomplete_mapping_and_wrong_version_lines(self) -> None:
+        draft = self._draft("2026-10", "89/2026/TT-BTC")
+        draft["form_field_draft"]["mapping_complete"] = False
+        with self.assertRaisesRegex(ValueError, "complete, non-blocked"):
+            vat.write_draft(draft, self.root / "incomplete.xml")
+        draft = self._draft("2025-Q2", "80/2021/TT-BTC")
+        draft["form_field_draft"]["amounts"]["34a"] = "1"
+        with self.assertRaisesRegex(ValueError, "absent from HTKK template"):
+            vat.write_draft(draft, self.root / "wrong-version.xml")
+
+    def test_xml_export_refuses_to_overwrite_source(self) -> None:
+        draft = self._draft("2026-10", "89/2026/TT-BTC")
+        source = Path(draft["source_file"])
+        original = source.read_bytes()
+        with self.assertRaisesRegex(vat.VatDraftError, "ghi đè"):
+            vat.write_draft(draft, source, force=True)
+        self.assertEqual(source.read_bytes(), original)

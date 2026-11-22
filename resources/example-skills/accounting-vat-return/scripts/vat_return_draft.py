@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 from defusedxml import DefusedXmlException
 from defusedxml import ElementTree as ET
+from htkk_vat_xml_export import export_01_gtgt_xml
 
 MAX_UNCOMPRESSED_BYTES = 256 * 1024 * 1024
 MAIN_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
@@ -1741,7 +1742,7 @@ def build_draft(
             "field_mapping_status": form_field_draft["mapping_status"]
             if form_field_draft
             else "NOT_STARTED",
-            "xml_export": "NOT_STARTED_SCHEMA_NOT_VERIFIED",
+            "xml_export": "DRAFT_EXPORT_IMPLEMENTED_HTKK_IMPORT_UNVERIFIED",
             "submission_ready": False,
             "note": "Bản JSON/XLSX chỉ là tài liệu soát xét nội bộ, không phải tờ khai pháp định. Mẫu được chọn tường minh qua CLI; người dùng vẫn phải xác nhận kỳ áp dụng, phân loại từng dòng, dữ liệu ngoài hóa đơn, phụ lục và điều kiện kê khai. Chưa điền mẫu XLSX chính thức hoặc lập XML.",
         },
@@ -1765,8 +1766,8 @@ def write_draft(
 ) -> Path:
     destination = Path(output_path)
     output_format = destination.suffix.casefold()
-    if output_format not in {".json", ".xlsx"}:
-        raise VatDraftError("Chỉ xuất JSON hoặc workbook XLSX soát xét nội bộ.")
+    if output_format not in {".json", ".xlsx", ".xml"}:
+        raise VatDraftError("Chỉ xuất JSON, XLSX nội bộ hoặc XML nháp 01/GTGT.")
     source_name = str(draft.get("source_file", ""))
     if (
         destination.name == source_name
@@ -1776,6 +1777,8 @@ def write_draft(
     if destination.exists() and not force:
         raise VatDraftError("Tệp dự thảo đã tồn tại; dùng --force khi muốn ghi đè.")
     destination.parent.mkdir(parents=True, exist_ok=True)
+    if output_format == ".xml":
+        return export_01_gtgt_xml(draft, destination)
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -2047,7 +2050,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Số hàng tiêu đề trong Excel; mặc định hàng có dữ liệu đầu tiên.",
     )
     parser.add_argument(
-        "--output", help="Đường dẫn JSON hoặc workbook XLSX soát xét nội bộ."
+        "--output", help="Đường dẫn JSON, XLSX nội bộ hoặc XML nháp 01/GTGT."
     )
     parser.add_argument(
         "--force", action="store_true", help="Cho phép ghi đè tệp dự thảo đã có."

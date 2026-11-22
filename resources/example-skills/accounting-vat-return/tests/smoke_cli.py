@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,7 @@ def main() -> int:
         root = Path(temporary)
         source = root / "synthetic-invoices.csv"
         output = root / "draft.json"
+        xml_output = root / "draft.xml"
         review_workbook = root / "review-only.xlsx"
         law_watch_report = root / "law-watch-report.json"
         source.write_text(
@@ -93,7 +95,24 @@ def main() -> int:
         assert draft["form_field_draft"]["independent_check"]["status"] == "pass"
         assert draft["legal_form"]["version"] == "89/2026/TT-BTC"
         assert draft["legal_form"]["submission_ready"] is False
-        assert draft["legal_form"]["xml_export"] == "NOT_STARTED_SCHEMA_NOT_VERIFIED"
+        assert draft["legal_form"]["xml_export"] == "DRAFT_EXPORT_IMPLEMENTED_HTKK_IMPORT_UNVERIFIED"
+        xml_run = subprocess.run(
+            [
+                sys.executable, str(SCRIPT), str(source),
+                "--taxpayer-tax-id", "0100000001", "--period", "2026-Q3",
+                "--form-version", "89/2026/TT-BTC",
+                "--law-watch-report", str(law_watch_report),
+                "--output", str(xml_output),
+            ],
+            capture_output=True, check=False, text=True,
+        )
+        if xml_run.returncode != 0:
+            raise SystemExit(xml_run.stderr or xml_run.stdout)
+        generated_xml = ET.parse(xml_output).getroot()
+        assert generated_xml.tag == "HSoThueDTu"
+        assert generated_xml.findtext("./HSoKhaiThue/TTinChung/TTinTKhaiThue/NNT/mst") == "0100000001"
+        assert generated_xml.findtext("./HSoKhaiThue/CTieuTKhaiChinh/HHDVBRaChiuTSuat5/ct30") == "1000"
+        assert generated_xml.findtext("./HSoKhaiThue/CTieuTKhaiChinh/GiaTriVaThueGTGTHHDVMuaVao/ct23") == "2000"
         workbook_run = subprocess.run(
             [
                 sys.executable,

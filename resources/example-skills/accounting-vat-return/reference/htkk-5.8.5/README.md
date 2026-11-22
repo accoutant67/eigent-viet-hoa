@@ -28,3 +28,8 @@ The five PDFs in `legal/source-files` were copied verbatim from the working fold
 | `InterfaceTemplates/Validate/01_GTGT_TT89_309.xsd` | `8481F7C98CA9E008742552BDA4F7ECC814CB91D453584B179FDF2D7767D9DA19` |
 | `InterfaceTemplates/TKhaiThue_DBHC.xsd` | `ABA7F2ACBC9332CAAF3EB2DA9A081A3D876DDC7813D6230921DA48C775460011` |
 
+
+
+## XML nháp 01/GTGT
+
+Bộ xuất tái sử dụng pipeline GTGT và các mẫu trắng HTKK riêng cho TT80/TT89. Nó ánh xạ chỉ tiêu được phân loại tường minh, MST đã cung cấp và kỳ kê khai; giữ nguyên cây phần tử mẫu. XSD ghi kỳ tháng `MM/YYYY`, kỳ quý `Q/YYYY`, ngày đầu/cuối quý `DD/MM/YYYY`. Mẫu TT80 trong gói 5.8.5 còn có các trường địa chỉ cũ. Bộ xuất từ chối mapping thiếu và chỉ tiêu không thuộc phiên bản mẫu. XML sinh ra vẫn là bản nháp; tên/địa chỉ doanh nghiệp, cơ quan thuế, loại tờ khai, chữ ký và phụ lục chưa có đầu vào sẽ để trống. Test so sánh cấu trúc và đọc lại dữ liệu giả lập; chưa thử nhập HTKK/eTax.
