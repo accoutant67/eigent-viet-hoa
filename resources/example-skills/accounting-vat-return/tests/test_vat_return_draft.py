@@ -842,5 +842,87 @@ class VatReturnDraftTests(unittest.TestCase):
         )
 
 
+class VatInvoiceXmlTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def write_xml(self, name: str, xml: str) -> Path:
+        path = self.root / name
+        path.write_text(xml, encoding="utf-8")
+        return path
+
+    def invoice(self, extra_tax_subtotal: str = "") -> str:
+        return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+ xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+ xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+ <cbc:ID>INV-001</cbc:ID><cbc:IssueDate>2026-08-12</cbc:IssueDate>
+ <cac:AccountingSupplierParty><cac:Party><cac:PartyName><cbc:Name>Seller</cbc:Name></cac:PartyName>
+  <cac:PartyTaxScheme><cbc:CompanyID>0300000001</cbc:CompanyID></cac:PartyTaxScheme>
+ </cac:Party></cac:AccountingSupplierParty>
+ <cac:AccountingCustomerParty><cac:Party><cac:PartyLegalEntity><cbc:RegistrationName>Buyer</cbc:RegistrationName></cac:PartyLegalEntity>
+  <cac:PartyTaxScheme><cbc:CompanyID>0100000001</cbc:CompanyID></cac:PartyTaxScheme>
+ </cac:Party></cac:AccountingCustomerParty>
+ <cac:TaxTotal><cbc:TaxAmount currencyID="VND">50</cbc:TaxAmount>
+  <cac:TaxSubtotal><cbc:TaxableAmount currencyID="VND">1000</cbc:TaxableAmount>
+   <cbc:TaxAmount currencyID="VND">50</cbc:TaxAmount>
+   <cac:TaxCategory><cbc:Percent>5</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory>
+  </cac:TaxSubtotal>{extra_tax_subtotal}
+ </cac:TaxTotal><cac:LegalMonetaryTotal><cbc:PayableAmount currencyID="VND">1050</cbc:PayableAmount></cac:LegalMonetaryTotal>
+</Invoice>"""
+
+    def test_reads_ubl_invoice_into_existing_normalized_rows(self) -> None:
+        source = self.write_xml("synthetic-invoice.xml", self.invoice())
+        rows = vat.read_invoice_rows(source)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["source_row"], 1)
+        self.assertEqual(rows[0]["raw"]["invoice_number"], "INV-001")
+        self.assertEqual(rows[0]["raw"]["invoice_date"], "2026-08-12")
+        self.assertEqual(rows[0]["raw"]["seller_tax_id"], "0300000001")
+        self.assertEqual(rows[0]["raw"]["buyer_tax_id"], "0100000001")
+        self.assertEqual(rows[0]["raw"]["net_amount"], "1000")
+        self.assertEqual(rows[0]["raw"]["tax_rate"], "5%")
+        self.assertEqual(rows[0]["raw"]["tax_amount"], "50")
+        self.assertEqual(rows[0]["raw"]["gross_amount"], "1050")
+        self.assertEqual(rows[0]["raw"]["invoice_series"], "")
+        self.assertEqual(len(rows[0]["raw"]["source_sha256"]), 64)
+
+    def test_rejects_xml_with_multiple_vat_rates(self) -> None:
+        second = """<cac:TaxSubtotal><cbc:TaxableAmount>200</cbc:TaxableAmount>
+        <cbc:TaxAmount>20</cbc:TaxAmount><cac:TaxCategory><cbc:Percent>10</cbc:Percent>
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal>"""
+        source = self.write_xml("synthetic-multirate.xml", self.invoice(second))
+        with self.assertRaisesRegex(vat.VatDraftError, "một TaxSubtotal"):
+            vat.read_invoice_rows(source)
+
+    def test_rejects_dtd_and_entity_xml(self) -> None:
+        source = self.write_xml(
+            "synthetic-unsafe.xml",
+            '<!DOCTYPE Invoice [<!ENTITY x "boom">]><Invoice>&x;</Invoice>',
+        )
+        with self.assertRaisesRegex(vat.VatDraftError, "DTD/entity"):
+            vat.read_invoice_rows(source)
+
+    def test_rejects_malformed_and_unsupported_documents(self) -> None:
+        malformed = self.write_xml("synthetic-malformed.xml", "<Invoice>")
+        unsupported = self.write_xml("synthetic-unsupported.xml", "<CreditNote/>")
+        with self.assertRaisesRegex(vat.VatDraftError, "sai cú pháp"):
+            vat.read_invoice_rows(malformed)
+        with self.assertRaisesRegex(vat.VatDraftError, "TaxSubtotal"):
+            vat.read_invoice_rows(unsupported)
+
+    def test_credit_note_is_marked_for_review_and_not_assumed_original(self) -> None:
+        xml = self.invoice().replace("<Invoice ", "<CreditNote ", 1).replace(
+            "</Invoice>", "</CreditNote>"
+        )
+        source = self.write_xml("synthetic-credit-note.xml", xml)
+        row = vat.read_invoice_rows(source)[0]
+        self.assertEqual(row["raw"]["status"], "adjusted")
+
+
 if __name__ == "__main__":
     unittest.main()
