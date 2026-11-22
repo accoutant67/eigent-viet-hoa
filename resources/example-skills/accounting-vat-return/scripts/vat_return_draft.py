@@ -543,8 +543,8 @@ def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
         "TaxExclusiveAmount",
     )), None)
     net_total = (net_total_node.text or "").strip() if net_total_node is not None else ""
-    if not net_total:
-        net_total = money_text(sum((_decimal_xml(row[0], "TaxableAmount") for row in subtotals), Decimal(0)))
+    # Preserve source omissions. Tax subtotals are detail, not a substitute for
+    # missing document-level totals; missing totals must remain reviewable.
     tax_total_values = [
         _xml_direct_text(total, "TaxAmount")
         for total in tax_totals
@@ -553,7 +553,7 @@ def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
     tax_total_value = (
         money_text(sum((_decimal_xml(value, "TaxAmount") for value in tax_total_values), Decimal(0)))
         if tax_total_values
-        else money_text(sum((_decimal_xml(row[1], "TaxAmount") for row in subtotals), Decimal(0)))
+        else ""
     )
     rates = sorted({row[2] for row in subtotals})
     tax_rate = rates[0] if len(rates) == 1 else "MULTIPLE"

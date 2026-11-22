@@ -873,7 +873,7 @@ class VatInvoiceXmlTests(unittest.TestCase):
    <cbc:TaxAmount currencyID="VND">50</cbc:TaxAmount>
    <cac:TaxCategory><cbc:Percent>5</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory>
   </cac:TaxSubtotal>{extra_tax_subtotal}
- </cac:TaxTotal><cac:LegalMonetaryTotal><cbc:PayableAmount currencyID="VND">1050</cbc:PayableAmount></cac:LegalMonetaryTotal>
+ </cac:TaxTotal><cac:LegalMonetaryTotal><cbc:TaxExclusiveAmount currencyID="VND">1000</cbc:TaxExclusiveAmount><cbc:PayableAmount currencyID="VND">1050</cbc:PayableAmount></cac:LegalMonetaryTotal>
 </Invoice>"""
 
     def test_reads_ubl_invoice_into_existing_normalized_rows(self) -> None:
@@ -917,8 +917,10 @@ class VatInvoiceXmlTests(unittest.TestCase):
             '<cbc:TaxAmount currencyID="VND">50</cbc:TaxAmount>',
             '<cbc:TaxAmount currencyID="VND">70</cbc:TaxAmount>', 1
         ).replace(
-            '<cbc:PayableAmount currencyID="VND">1050</cbc:PayableAmount>',
+            '<cbc:TaxExclusiveAmount currencyID="VND">1000</cbc:TaxExclusiveAmount>',
             '<cbc:TaxExclusiveAmount currencyID="VND">1200</cbc:TaxExclusiveAmount>'
+        ).replace(
+            '<cbc:PayableAmount currencyID="VND">1050</cbc:PayableAmount>',
             '<cbc:PayableAmount currencyID="VND">1270</cbc:PayableAmount>'
         )
         source = self.write_xml("synthetic-multirate.xml", xml)
@@ -968,6 +970,20 @@ class VatInvoiceXmlTests(unittest.TestCase):
         self.assertEqual(line_record["tax_amount"], "12.50625")
         self.assertEqual(line_record["description"], "Dịch vụ kế toán")
         self.assertEqual(normalized["relationships"]["references"][0]["identifier"], "00009")
+
+    def test_missing_document_totals_remain_missing_and_are_held(self) -> None:
+        xml = self.invoice().replace(
+            '<cbc:TaxExclusiveAmount currencyID="VND">1000</cbc:TaxExclusiveAmount>', ''
+        ).replace('<cbc:TaxAmount currencyID="VND">50</cbc:TaxAmount>', '', 1)
+        source = self.write_xml("synthetic-missing-document-totals.xml", xml)
+        raw = vat.read_invoice_rows(source)[0]["raw"]
+        self.assertEqual(raw["net_amount"], "")
+        self.assertEqual(raw["tax_amount"], "")
+        draft = vat.build_draft(source, "0100000001", "2026-08")
+        record = draft["records"][0]
+        self.assertFalse(record["eligible_for_draft_totals"])
+        self.assertIn("invalid_net_amount", record["review_reasons"])
+        self.assertIn("invalid_tax_amount", record["review_reasons"])
 
     def test_rejects_xml_with_unverified_root_namespace(self) -> None:
         source = self.write_xml(
