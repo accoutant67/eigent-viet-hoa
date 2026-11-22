@@ -891,6 +891,23 @@ class VatInvoiceXmlTests(unittest.TestCase):
         self.assertEqual(rows[0]["raw"]["invoice_series"], "")
         self.assertEqual(len(rows[0]["raw"]["source_sha256"]), 64)
 
+    def test_xml_import_flows_into_vat_draft_with_source_trace(self) -> None:
+        import hashlib
+
+        source = self.write_xml("synthetic-for-draft.xml", self.invoice())
+        draft = vat.build_draft(source, "0100000001", "2026-08")
+        record = draft["records"][0]
+        self.assertEqual(record["direction"], "purchases")
+        self.assertEqual(record["source_trace"]["source_name"], source.name)
+        self.assertEqual(
+            record["source_trace"]["source_sha256"],
+            hashlib.sha256(source.read_bytes()).hexdigest(),
+        )
+        self.assertIn(
+            "missing_required_fields:invoice_series",
+            record["review_reasons"],
+        )
+
     def test_rejects_xml_with_multiple_vat_rates(self) -> None:
         second = """<cac:TaxSubtotal><cbc:TaxableAmount>200</cbc:TaxableAmount>
         <cbc:TaxAmount>20</cbc:TaxAmount><cac:TaxCategory><cbc:Percent>10</cbc:Percent>
