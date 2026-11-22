@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import hashlib
 import html
 import json
 import os
@@ -548,7 +549,7 @@ def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
         "tax_amount": tax_amount,
         "gross_amount": gross_amount,
         "status": "adjusted" if document_kind == "CreditNote" else "normal",
-        "source_sha256": __import__("hashlib").sha256(payload).hexdigest(),
+        "source_sha256": hashlib.sha256(payload).hexdigest(),
         "source_name": path.name,
     }
     return [{"source_row": 1, "raw": raw, "formula_fields": []}]
@@ -1155,6 +1156,13 @@ def _invoice_records(
             else None,
             "invoice_status": data.get("status", "") or "unspecified",
             "formula_fields": formula_fields,
+            "source_trace": {
+                "source_name": item.get("source_name")
+                or item["raw"].get("source_name"),
+                "source_row": source_row,
+                "source_sha256": item.get("source_sha256")
+                or item["raw"].get("source_sha256"),
+            },
             "eligible_for_draft_totals": False,
             "review_reasons": [],
         }
