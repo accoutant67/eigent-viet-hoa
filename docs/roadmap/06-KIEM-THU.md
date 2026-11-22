@@ -168,3 +168,11 @@ PR #2 bổ sung hợp đồng schema hóa đơn phiên bản 1.0.0 tại `resour
 - Đưa breakdown, dòng hàng, tham chiếu vào hợp đồng invoice-record 1.0.0 hiện có; không đổi schema. Trường vắng tiếp tục giữ null hoặc trạng thái `not_extracted`; không tạo số tiền. Thuế suất nhiều nhóm được gắn nhãn `MULTIPLE` ở hàng VAT và breakdown chi tiết được bảo toàn, không phân bổ suy đoán theo dòng.
 - Fixture giả lập bổ sung kiểm tra nhiều mức thuế, số thập phân, tiếng Việt, mã dòng `00017`, tham chiếu hóa đơn gốc, namespace không hỗ trợ và bất biến byte file nguồn. Cập nhật test cũ vốn kỳ vọng từ chối multi-rate.
 - **Kết quả kiểm thử của commit mới: CHƯA CHẠY** cho đến khi Actions hoàn tất. Ghi trạng thái VAT, law-watch, Test, regression và smoke vào đây sau khi có kết quả CI. GUI Eigent thật vẫn **BLOCKED** nếu chưa có môi trường GUI để thao tác trực tiếp.
+
+
+### Hậu kiểm CI đầu tiên — commit a7f7cb9
+
+- Accounting law watch: **COMPLETED / SUCCESS**.
+- VAT workflow: **COMPLETED / FAILURE**. Unit test 35 chạy, 33 pass, 2 assertion cũ không khớp: một test còn mong profile ID v1 cũ sau khi parser nâng profile ID lên v2; một test mong CreditNote không namespace báo thiếu TaxSubtotal, trong khi phát hiện profile không xác minh trả `UNSUPPORTED_PROFILE`. Skill integration job **SUCCESS**.
+- Đây là regression của kỳ vọng test sau khi thay đổi có chủ đích, không sửa/xóa kiểm thử nghiệp vụ. Cập nhật hai assertion để khóa profile v2 mới và mã từ chối profile không hỗ trợ; sau đó chạy lại VAT và toàn bộ regression trên commit kế tiếp.
+- Test tổng thể trên commit `a7f7cb9` còn `IN_PROGRESS` khi đọc trạng thái; chưa kết luận. Electron Preview, Python Tests, Web + Local Brain Smoke và Frontend Guardrails đều đang chạy tại lần đọc đó.

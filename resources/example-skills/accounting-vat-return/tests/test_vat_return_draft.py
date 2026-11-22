@@ -995,7 +995,7 @@ class VatInvoiceXmlTests(unittest.TestCase):
         unsupported = self.write_xml("synthetic-unsupported.xml", "<CreditNote/>")
         with self.assertRaisesRegex(vat.VatDraftError, "sai cú pháp"):
             vat.read_invoice_rows(malformed)
-        with self.assertRaisesRegex(vat.VatDraftError, "TaxSubtotal"):
+        with self.assertRaisesRegex(vat.VatDraftError, "UNSUPPORTED_PROFILE"):
             vat.read_invoice_rows(unsupported)
 
     def test_normalized_invoice_uses_shared_schema_and_preserves_source_values(self) -> None:
@@ -1024,7 +1024,7 @@ class VatInvoiceXmlTests(unittest.TestCase):
         )
         self.assertEqual(
             normalized["source"]["parser_profile"],
-            "oasis-ubl-2-single-vat-subtotal-v1",
+            "oasis-ubl-2-invoice-vat-v2",
         )
         self.assertEqual(normalized["line_items"]["extraction_status"], "not_extracted")
         self.assertEqual(normalized["relationships"]["extraction_status"], "not_extracted")
