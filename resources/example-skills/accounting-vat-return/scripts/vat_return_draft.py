@@ -426,6 +426,134 @@ def read_csv_rows(path: Path) -> list[dict[str, Any]]:
         raise VatDraftError(f"Không đọc được CSV: {exc}") from exc
 
 
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1].split(":")[-1]
+
+
+def _xml_text(node: ET.Element, names: set[str]) -> str:
+    for child in node.iter():
+        if _xml_local_name(child.tag) in names and child.text and child.text.strip():
+            return child.text.strip()
+    return ""
+
+
+def read_ubl_invoice_xml(path: Path) -> list[dict[str, Any]]:
+    """Read the explicitly supported, single-document UBL Invoice profile.
+
+    This is a data importer, not validation against a GDT/HTKK submission schema.
+    Ambiguous multi-rate invoices are rejected instead of being flattened.
+    """
+    max_xml_bytes = 20 * 1024 * 1024
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        raise VatDraftError(f"Không đọc được tệp XML hóa đơn: {exc}") from exc
+    if len(payload) > max_xml_bytes:
+        raise VatDraftError("Tệp XML hóa đơn vượt giới hạn 20 MiB.")
+    try:
+        root = ET.fromstring(
+            payload,
+            forbid_dtd=True,
+            forbid_entities=True,
+            forbid_external=True,
+        )
+    except DefusedXmlException as exc:
+        raise VatDraftError("XML chứa khai báo DTD/entity không an toàn.") from exc
+    except ET.ParseError as exc:
+        raise VatDraftError(f"XML hóa đơn sai cú pháp: {exc}") from exc
+
+    document_kind = _xml_local_name(root.tag)
+    if document_kind not in {"Invoice", "CreditNote"}:
+        raise VatDraftError(
+            "Chỉ hỗ trợ một tài liệu UBL Invoice hoặc CreditNote đơn lẻ."
+        )
+
+    subtotals = [
+        item for item in root.iter()
+        if _xml_local_name(item.tag) == "TaxSubtotal"
+    ]
+    vat_rates: list[tuple[str, str, str]] = []
+    for subtotal in subtotals:
+        category = next(
+            (item for item in subtotal.iter()
+             if _xml_local_name(item.tag) == "TaxCategory"),
+            None,
+        )
+        if category is None:
+            continue
+        scheme = next(
+            (item for item in category.iter()
+             if _xml_local_name(item.tag) == "TaxScheme"),
+            None,
+        )
+        scheme_id = _xml_text(scheme, {"ID"}) if scheme is not None else ""
+        if scheme_id and scheme_id.casefold() not in {"vat", "valueaddedtax"}:
+            continue
+        taxable = _xml_text(subtotal, {"TaxableAmount"})
+        tax = _xml_text(subtotal, {"TaxAmount"})
+        percent = _xml_text(category, {"Percent"})
+        if not taxable or not tax or not percent:
+            raise VatDraftError(
+                "TaxSubtotal thiếu TaxableAmount, TaxAmount hoặc Percent; cần kế toán kiểm tra."
+            )
+        try:
+            rate_value = Decimal(percent)
+            Decimal(taxable)
+            Decimal(tax)
+        except InvalidOperation as exc:
+            raise VatDraftError("Số tiền hoặc thuế suất trong XML không hợp lệ.") from exc
+        vat_rates.append((taxable, tax, f"{money_text(rate_value)}%"))
+    if len(vat_rates) != 1:
+        raise VatDraftError(
+            "Hồ sơ UBL phải có đúng một TaxSubtotal thuế GTGT; hóa đơn nhiều mức thuế chưa được hỗ trợ."
+        )
+
+    def party_values(party_name: str) -> tuple[str, str]:
+        party = next(
+            (item for item in root.iter()
+             if _xml_local_name(item.tag) == party_name),
+            None,
+        )
+        if party is None:
+            return "", ""
+        tax_scheme = next(
+            (item for item in party.iter()
+             if _xml_local_name(item.tag) == "PartyTaxScheme"),
+            None,
+        )
+        tax_id = _xml_text(tax_scheme, {"CompanyID"}) if tax_scheme is not None else ""
+        name = _xml_text(party, {"RegistrationName", "Name"})
+        return tax_id, name
+
+    seller_tax_id, seller_name = party_values("AccountingSupplierParty")
+    buyer_tax_id, buyer_name = party_values("AccountingCustomerParty")
+    date_value = _xml_text(root, {"IssueDate"})
+    invoice_number = _xml_text(root, {"ID"})
+    explicit_series = _xml_text(root, {"InvoiceSeries", "InvoiceSeriesID", "Series"})
+    net_amount, tax_amount, tax_rate = vat_rates[0]
+    gross_amount = _xml_text(root, {"PayableAmount"})
+    if not gross_amount:
+        raise VatDraftError("XML thiếu PayableAmount; không tự tính tổng thanh toán.")
+
+    raw = {
+        "invoice_date": date_value,
+        "seller_tax_id": seller_tax_id,
+        "seller_name": seller_name,
+        "buyer_tax_id": buyer_tax_id,
+        "buyer_name": buyer_name,
+        "invoice_series": explicit_series,
+        "invoice_number": invoice_number,
+        "net_amount": net_amount,
+        "tax_rate": tax_rate,
+        "tax_amount": tax_amount,
+        "gross_amount": gross_amount,
+        "status": "adjusted" if document_kind == "CreditNote" else "normal",
+        "source_sha256": __import__("hashlib").sha256(payload).hexdigest(),
+        "source_name": path.name,
+    }
+    return [{"source_row": 1, "raw": raw, "formula_fields": []}]
+
+
 def read_invoice_rows(
     path: str | Path,
     sheet_name: str | None = None,
@@ -441,8 +569,12 @@ def read_invoice_rows(
         if header_row not in (None, 1):
             raise VatDraftError("CSV chỉ hỗ trợ tiêu đề ở hàng 1.")
         return read_csv_rows(source)
+    if suffix == ".xml":
+        if sheet_name or header_row not in (None, 1):
+            raise VatDraftError("--sheet/--header-row không áp dụng cho XML.")
+        return read_ubl_invoice_xml(source)
     raise VatDraftError(
-        "Chỉ nhận .xlsx hoặc .csv; XML/PDF/ảnh chưa triển khai trong slice này."
+        "Chỉ nhận .xlsx, .csv hoặc XML UBL Invoice/CreditNote đơn lẻ theo profile được hỗ trợ."
     )
 
 
@@ -1691,7 +1823,7 @@ def _write_internal_review_workbook(draft: dict[str, Any], stream: Any) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", help="Tệp hóa đơn .xlsx hoặc .csv.")
+    parser.add_argument("input", help="Tệp hóa đơn .xlsx, .csv hoặc XML UBL đơn lẻ.")
     parser.add_argument(
         "--taxpayer-tax-id", required=True, help="MST dùng để phân loại bên mua/bán."
     )
