@@ -1124,7 +1124,7 @@ class HtkkVatXmlExportTests(unittest.TestCase):
 
     def test_xml_export_refuses_to_overwrite_source(self) -> None:
         draft = self._draft("2026-10", "89/2026/TT-BTC")
-        source = Path(draft["source_file"])
+        source = self.root / "mapped.csv"
         original = source.read_bytes()
         with self.assertRaisesRegex(vat.VatDraftError, "ghi đè"):
             vat.write_draft(draft, source, force=True)
