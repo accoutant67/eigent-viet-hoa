@@ -1,6 +1,6 @@
 ---
 name: accounting-vat-return
-description: "Nhập và kiểm tra dữ liệu hóa đơn mua vào/bán ra, tổng hợp dự thảo GTGT theo tháng/quý; xuất JSON hoặc workbook XLSX soát xét nội bộ, không thay mẫu pháp định."
+description: "Nhập và kiểm tra dữ liệu hóa đơn .xlsx/.csv và XML UBL đơn lẻ theo profile hỗ trợ, tổng hợp dự thảo GTGT tháng/quý; xuất JSON hoặc workbook XLSX soát xét nội bộ, không thay mẫu pháp định."
 ---
 
 # Dự thảo kê khai thuế GTGT tháng/quý
@@ -9,7 +9,7 @@ Skill này chạy trong hạ tầng Skill hiện có của Eigent. Các mã HD/T
 
 ## Luồng thực hiện
 
-1. `HD01` đọc bảng hóa đơn `.xlsx` hoặc `.csv`. `HD02` phân luồng mua vào, `HD03` phân luồng bán ra dựa trên MST người nộp thuế và MST hai bên; không ghép theo tên.
+1. `HD01` đọc bảng hóa đơn `.xlsx`/`.csv` hoặc một XML UBL `Invoice`/`CreditNote` đơn lẻ theo profile đã hỗ trợ. XML không được coi là đã xác thực theo schema GDT/HTKK; hóa đơn nhiều mức thuế bị chặn, CreditNote được giữ để soát, trường ký hiệu chỉ lấy khi XML có cung cấp rõ. `HD02` phân luồng mua vào, `HD03` phân luồng bán ra dựa trên MST người nộp thuế và MST hai bên; không ghép theo tên.
 2. `HD04` kiểm tra khóa hóa đơn trùng, ngày, trạng thái được khai báo, số tiền, thuế suất ghi trên nguồn, kỳ và ô công thức. Trạng thái thiếu/không nhận diện, hóa đơn trùng, điều chỉnh, thay thế, hủy, sai số học, ngoài kỳ hoặc có công thức được giữ lại để soát và không cộng vào dự thảo.
 3. `PL01`–`PL04` tái sử dụng Skill `accounting-law-watch`; không tạo watcher thứ hai. Trước khi chọn phiên bản, truyền JSON report của law-watch bằng `--law-watch-report`. Báo cáo phải cho thấy đã đọc nguồn chính thức, không có đề xuất văn bản mới chưa duyệt, không tự áp dụng quy tắc và các nguồn bắt buộc của phiên bản đều PASS. Mọi kết luận về kỳ vẫn cần người duyệt.
 4. `TK01` tổng hợp doanh số và tiền thuế theo chiều mua/bán và **nhãn thuế suất trên nguồn**. Công cụ không suy diễn diện chịu thuế, điều kiện khấu trừ hoặc số thuế phải nộp.
@@ -45,6 +45,6 @@ uv run --project backend python resources/example-skills/accounting-vat-return/s
 
 ## Giới hạn hiện tại
 
-- Đã hỗ trợ nhập `.xlsx`/`.csv`, giữ mã dạng chuỗi và số 0 đầu, phân loại theo MST, kiểm tra hóa đơn, tổng hợp, ánh xạ các mã dòng được chỉ định tường minh, tính công thức trong catalog và đối chiếu độc lập. Kết quả xuất JSON hoặc workbook XLSX soát xét nội bộ; chỉ tiêu [25] và dữ liệu ngoài hóa đơn vẫn để trống khi chưa có nguồn.
-- Đọc XML hóa đơn/PDF/ảnh, đối chiếu sổ 133/33311, sao chép/điền workbook pháp định bảo toàn định dạng, ánh xạ phụ lục, xuất XLSX pháp định, kiểm tra XML theo schema, tạo/ký/gửi tờ khai và xử lý khai bổ sung là **NOT STARTED**.
+- Đã hỗ trợ nhập `.xlsx`/`.csv` và profile XML UBL đơn lẻ `Invoice`/`CreditNote` (một `TaxSubtotal` VAT), giữ truy vết tên tệp/dòng/hash, phân loại theo MST, kiểm tra hóa đơn, tổng hợp, ánh xạ mã dòng được chỉ định tường minh, tính công thức trong catalog và đối chiếu độc lập. Parser từ chối DTD/entity, XML sai cấu trúc, thiếu `PayableAmount` và hồ sơ nhiều mức thuế; không tự sinh ký hiệu hóa đơn. Kết quả JSON/XLSX vẫn là bản soát xét nội bộ.
+- Đọc XML nhà cung cấp ngoài profile UBL đơn lẻ này, xử lý hóa đơn nhiều mức thuế, đọc PDF/ảnh, đối chiếu sổ 133/33311, sao chép/điền workbook pháp định bảo toàn định dạng, ánh xạ phụ lục, xuất XLSX pháp định, kiểm tra XML theo schema, tạo/ký/gửi tờ khai và xử lý khai bổ sung là **NOT STARTED**.
 - Không dùng dữ liệu thực trong test. Không đưa tệp hóa đơn, mã số thuế, tên doanh nghiệp hoặc token lên repository.
