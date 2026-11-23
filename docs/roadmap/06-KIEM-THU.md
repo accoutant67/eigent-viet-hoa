@@ -105,6 +105,7 @@ Không có thao tác GUI thật cho menu, đổi ngôn ngữ, gửi Chat AI ho�
 - Sửa tại `42e61a0`: bỏ khai báo namespace dư trong fixture. Không thay đổi mã xử lý nghiệp vụ.
 - Kiểm thử lại cục bộ: VAT **25/25 PASS**, `smoke_cli.py` PASS, `py_compile` PASS, `git diff --check` PASS.
 - CI sau sửa: VAT workflow, Skill integration và toàn bộ Test workflow đều PASS; chi tiết bên dưới.
+- 23/11/2026, Windows, Python 3.11.18, môi trường cô lập chỉ có `defusedxml` 0.7.1, `openpyxl` 3.1.5, `jsonschema` 4.26.0. Lệnh đúng workflow `accounting-vat-return.yml`: `python -m unittest discover -s resources/example-skills/accounting-vat-return/tests -p 'test_*.py' -v` là **45/45 PASS**; `python resources/example-skills/accounting-vat-return/tests/smoke_cli.py` là **PASS**. Hai assertion mới khóa số 0 sau khi mapping đủ và giữ [22], [25], [36] trống. Kết quả 25/25 ở trên là của commit cũ, không bị thay bằng lần chạy này. CI của commit chứa lần chạy 45/45 được ghi khi workflow kết thúc, không lấy run cũ.
 
 ### Kết quả kiểm thử
 

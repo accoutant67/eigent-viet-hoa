@@ -1,6 +1,6 @@
 # Tiến độ dự án
 
-**Cập nhật:** 21/11/2026
+**Cập nhật:** 23/11/2026. Lần chạy local mới: VAT unittest **45/45 PASS** và smoke CLI **PASS** trên Python 3.11.18. Dòng 25/25 bên dưới là kết quả commit cũ. XSD vẫn BLOCKED. Nhập HTKK Windows vẫn NOT STARTED.
 
 **PR #1:** `codex/accounting-workbook-audit-mvp`
 
