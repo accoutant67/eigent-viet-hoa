@@ -129,7 +129,17 @@ def export_01_gtgt_xml(draft: dict[str, Any], destination: str | Path) -> Path:
             raise HtkkXmlExportError(f"Indicator [{code}] is not a decimal amount.") from exc
         if not amount.is_finite():
             raise HtkkXmlExportError(f"Indicator [{code}] must be a finite decimal.")
-        target.text = text
+        if amount != amount.to_integral_value():
+            raise HtkkXmlExportError(
+                f"Indicator [{code}] must be a whole-VND amount for the HTKK form; "
+                "fractional values are rejected without rounding."
+            )
+        integer_amount = int(amount)
+        if not -(2**63) <= integer_amount <= (2**63 - 1):
+            raise HtkkXmlExportError(f"Indicator [{code}] is outside the HTKK signed 64-bit range.")
+        if code in {"40a", "40", "41"} and integer_amount < 0:
+            raise HtkkXmlExportError(f"Indicator [{code}] must be non-negative in the HTKK form.")
+        target.text = str(integer_amount)
 
     output = Path(destination)
     output.parent.mkdir(parents=True, exist_ok=True)

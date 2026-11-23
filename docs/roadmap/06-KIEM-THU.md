@@ -176,3 +176,14 @@ PR #2 bổ sung hợp đồng schema hóa đơn phiên bản 1.0.0 tại `resour
 - VAT workflow: **COMPLETED / FAILURE**. Unit test 35 chạy, 33 pass, 2 assertion cũ không khớp: một test còn mong profile ID v1 cũ sau khi parser nâng profile ID lên v2; một test mong CreditNote không namespace báo thiếu TaxSubtotal, trong khi phát hiện profile không xác minh trả `UNSUPPORTED_PROFILE`. Skill integration job **SUCCESS**.
 - Đây là regression của kỳ vọng test sau khi thay đổi có chủ đích, không sửa/xóa kiểm thử nghiệp vụ. Cập nhật hai assertion để khóa profile v2 mới và mã từ chối profile không hỗ trợ; sau đó chạy lại VAT và toàn bộ regression trên commit kế tiếp.
 - Test tổng thể trên commit `a7f7cb9` còn `IN_PROGRESS` khi đọc trạng thái; chưa kết luận. Electron Preview, Python Tests, Web + Local Brain Smoke và Frontend Guardrails đều đang chạy tại lần đọc đó.
+
+
+## Cập nhật kiểm kê HTKK và kiểm tra xuất XML — 23/11/2026
+
+- Đã xác minh branch `codex/vat-return-mvp` là head của PR #2; PR đang open/draft/chưa merge. Trước thay đổi, commit `6a2ff3b6e975a2246064e2020fa89743e8f44343`; trên commit đó Test, Accounting VAT return draft và Accounting law watch đều **COMPLETED / SUCCESS**.
+- Kiểm kê cục bộ đọc 4.097 tệp: 2.312 XML, 1.100 XLS, 669 XSD, 10 XLSX, 2 JSON, 1 DOC, 1 RAR, 1 DTD, 1 MD. Toàn bộ XML parse được; 406 XML root `HSoThueDTu`, 1.904 XML layout/trao đổi, một XML validation root `Workbook`, một XML khác. Không thấy UBL Invoice/CreditNote.
+- SHA-256: 419 nhóm duplicate trong XML; 530 nhóm trong toàn bộ folder. Có 27 XML có tên 01/GTGT (11 XML tờ khai, 15 layout, một PL01_KHBS); 11 XML tên 05/KK-TNCN, 547 tên TNDN (44 root HSoThueDTu), 134 tên gợi ý BCTC/các báo cáo con. Danh mục/giới hạn trong [INVENTORY.md](../../resources/example-skills/accounting-vat-return/reference/htkk-5.8.5/INVENTORY.md).
+- Đọc mẫu trắng `01_GTGT_TT89_xml_309.xml` (139 phần tử, không namespace, các trường lá trống) và đối chiếu mẫu layout `Sections` riêng. Không nhầm XML tờ khai với XML hóa đơn.
+- Rà soát phát hiện rủi ro trước khi mở rộng test: mẫu XSD khai báo các chỉ tiêu tiền là số nguyên, trong khi test/export trước đó cho phép ghi phần thập phân từ Decimal. Đã sửa exporter: chỉ chấp nhận VND nguyên, chuẩn hóa giá trị toán học nguyên sang chuỗi integer; từ chối số lẻ, ngoài signed 64-bit và giá trị âm ở các chỉ tiêu không âm, không tự làm tròn. Test XML dùng fixture nguyên và bổ sung test từ chối số lẻ/âm.
+- Đã cập nhật mô tả Skill để phản ánh XML draft đã triển khai và trạng thái chưa xác minh XSD cho mọi output/nhập lại HTKK. Test hiện so cấu trúc cây XML và đọc lại; không kết luận nộp được.
+- Các thay đổi trên được gửi trong commit tiếp nối ở PR #2; kết quả CI của commit mới sẽ được ghi ở phần sau khi GitHub Actions hoàn tất. Kết quả hiện tại của commit cũ không được gán cho commit mới.
