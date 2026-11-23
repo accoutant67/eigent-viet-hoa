@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:eigent:accounting:invoice-record:1.0.0",
+  "title": "Shared accounting invoice record",
+  "description": "Versioned normalized invoice record. Shared identity, party, amount and provenance primitives are designed for reuse by accounting, tax, payroll, HR and enterprise workflows. This schema does not define tax eligibility or any official submission format.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_kind", "identifier", "issued_at", "parties", "amounts", "tax_breakdown", "line_items", "relationships", "source"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "document_kind": { "enum": ["invoice", "credit_note", "unspecified"] },
+    "identifier": { "$ref": "#/$defs/document_identifier" },
+    "issued_at": { "type": ["string", "null"] },
+    "parties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seller", "buyer"],
+      "properties": {
+        "seller": { "$ref": "#/$defs/party" },
+        "buyer": { "$ref": "#/$defs/party" }
+      }
+    },
+    "amounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["net", "tax", "gross"],
+      "properties": {
+        "net": { "$ref": "#/$defs/decimal_string_or_null" },
+        "tax": { "$ref": "#/$defs/decimal_string_or_null" },
+        "gross": { "$ref": "#/$defs/decimal_string_or_null" }
+      }
+    },
+    "tax_breakdown": { "type": "array", "items": { "$ref": "#/$defs/tax_amount" } },
+    "line_items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extraction_status"],
+      "properties": {
+        "extraction_status": { "$ref": "#/$defs/extraction_status" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/invoice_line" } }
+      }
+    },
+    "relationships": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extraction_status"],
+      "properties": {
+        "extraction_status": { "$ref": "#/$defs/extraction_status" },
+        "references": { "type": "array", "items": { "$ref": "#/$defs/document_reference" } }
+      }
+    },
+    "source": { "$ref": "#/$defs/source_trace" }
+  },
+  "$defs": {
+    "decimal_string_or_null": {
+      "type": ["string", "null"],
+      "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    },
+    "document_identifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "series"],
+      "properties": {
+        "number": { "type": ["string", "null"] },
+        "series": { "type": ["string", "null"] }
+      }
+    },
+    "party": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tax_id", "name"],
+      "properties": {
+        "tax_id": { "type": ["string", "null"] },
+        "name": { "type": ["string", "null"] }
+      }
+    },
+    "organization": {
+      "type": "object",
+      "description": "Reusable legal-entity primitive for company, employer and accounting-entity records.",
+      "required": ["organization_id", "legal_name"],
+      "properties": {
+        "organization_id": { "type": "string" },
+        "legal_name": { "type": "string" },
+        "tax_id": { "type": ["string", "null"] }
+      }
+    },
+    "person": {
+      "type": "object",
+      "description": "Reusable person primitive for employee and individual-counterparty records.",
+      "required": ["person_id", "display_name"],
+      "properties": {
+        "person_id": { "type": "string" },
+        "display_name": { "type": "string" },
+        "tax_id": { "type": ["string", "null"] },
+        "national_id": { "type": ["string", "null"] }
+      }
+    },
+    "effective_period": {
+      "type": "object",
+      "description": "Reusable validity interval for legal rules, form versions and employment/accounting records.",
+      "required": ["effective_from", "effective_to"],
+      "properties": {
+        "effective_from": { "type": ["string", "null"], "format": "date" },
+        "effective_to": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+    "extraction_status": { "enum": ["complete", "partial", "not_extracted"] },
+    "tax_amount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rate_label", "taxable_amount", "tax_amount"],
+      "properties": {
+        "rate_label": { "type": ["string", "null"] },
+        "taxable_amount": { "$ref": "#/$defs/decimal_string_or_null" },
+        "tax_amount": { "$ref": "#/$defs/decimal_string_or_null" }
+      }
+    },
+    "invoice_line": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": ["string", "null"] },
+        "quantity": { "$ref": "#/$defs/decimal_string_or_null" },
+        "unit": { "type": ["string", "null"] },
+        "unit_price": { "$ref": "#/$defs/decimal_string_or_null" },
+        "net_amount": { "$ref": "#/$defs/decimal_string_or_null" },
+        "tax_rate_label": { "type": ["string", "null"] },
+        "tax_amount": { "$ref": "#/$defs/decimal_string_or_null" },
+        "source_line_id": { "type": ["string", "null"] }
+      }
+    },
+    "document_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference_kind", "identifier"],
+      "properties": {
+        "reference_kind": { "type": "string" },
+        "identifier": { "type": "string" },
+        "issued_at": { "type": ["string", "null"] }
+      }
+    },
+    "source_trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_name", "source_row", "sha256", "parser_profile"],
+      "properties": {
+        "file_name": { "type": ["string", "null"] },
+        "source_row": { "type": ["integer", "null"], "minimum": 1 },
+        "sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "parser_profile": { "type": "string" }
+      }
+    }
+  }
+}

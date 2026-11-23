@@ -5,10 +5,12 @@ name: Test
     branches:
       - main
       - feat/workforce-bundle-product
+      - codex/accounting-workbook-audit-mvp
   push:
     branches:
       - main
       - feat/workforce-bundle-product
+      - 'codex/**'
 
 permissions:
   contents: read

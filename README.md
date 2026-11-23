@@ -65,10 +65,24 @@ Nguồn: [eigent-ai/eigent](https://github.com/eigent-ai/eigent). Giữ nguyên 
 
 ## Hỗ trợ nghiệp vụ kế toán (đang phát triển)
 
-Lát cắt đầu tiên bổ sung Skill accounting-workbook-audit để rà soát tệp .xlsx ở chế độ chỉ đọc. Skill báo dòng trùng, khóa trùng theo cột đã chọn, cột bắt buộc còn trống và ô lỗi Excel; kết quả được ghi thành tệp .audit.json riêng.
+Repository hiện có ba Skill kế toán mẫu trong hạ tầng Skill hiện tại của Eigent: `accounting-workbook-audit` (đọc và báo cáo lỗi `.xlsx`), `accounting-law-watch` (theo dõi danh sách văn bản chính thức và tạo đề xuất cần duyệt), và `accounting-vat-return` (nhập hóa đơn `.xlsx`/`.csv`, phân loại theo MST, kiểm tra cơ bản, tổng hợp và xuất JSON dự thảo GTGT tháng/quý). Đây là ba Skill, không phải 72 Agent đã đăng ký.
+
+`accounting-vat-return` giữ nguyên tệp nguồn, yêu cầu kiểm tra trạng thái hóa đơn, ghép bên mua/bán theo MST chứ không theo tên, đánh dấu hóa đơn trùng/công thức/sai số học để soát và so tổng bằng lượt tính độc lập. Mẫu 01/GTGT TT80 và TT89 đã được xác minh từ nguồn chính thức; lựa chọn theo kỳ và ánh xạ trường đầu ra chưa được duyệt. Xuất XLSX/XML và nộp tờ khai đang NOT STARTED. Không dùng kết quả JSON để nộp thuế.
 
 Chạy trong môi trường có Python 3.11:
 
-    python resources/example-skills/accounting-workbook-audit/scripts/audit_workbook.py "bang-ke.xlsx" --required-column "Mã nhân viên" --key-column "Mã nhân viên"
+Kiểm tra workbook chỉ đọc:
+
+```
+python resources/example-skills/accounting-workbook-audit/scripts/audit_workbook.py "bang-ke.xlsx" --required-column "Mã nhân viên" --key-column "Mã nhân viên"
+```
 
 Có thể thêm --sheet "Tên sheet", --header-row 2 hoặc --output "duong-dan/bao-cao.audit.json". Công cụ không sửa workbook, không tính lại công thức, không tự xóa hoặc điền dữ liệu và không xác nhận tính hợp lệ kế toán/thuế/pháp lý. Chỉ dùng dữ liệu giả lập trong CI. Xem lộ trình kế toán tại docs/roadmap/01-KIEM-KE-DU-AN.md.
+
+Chạy dự thảo nội bộ GTGT:
+
+```
+uv run --project backend python resources/example-skills/accounting-vat-return/scripts/vat_return_draft.py "hoa-don.xlsx" --taxpayer-tax-id "0100000001" --period "2026-Q3" --sheet "HoaDon"
+```
+
+Lộ trình và trạng thái kiểm thử hiện tại nằm trong [tiến độ dự án](./docs/roadmap/07-TIEN-DO.md) và [báo cáo kiểm thử](./docs/roadmap/06-KIEM-THU.md). Chỉ dùng dữ liệu giả lập; không đưa hóa đơn, MST, dữ liệu kế toán hoặc token thực lên repository.

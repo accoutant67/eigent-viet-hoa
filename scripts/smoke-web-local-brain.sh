@@ -140,8 +140,12 @@ curl --silent --show-error --fail \
   --header "X-Channel: web" \
   --output "${TMP_DIR}/law_skill_files.json" \
   "http://${BRAIN_HOST}:${BRAIN_PORT}/skills/accounting-law-watch/files"
+curl --silent --show-error --fail \
+  --header "X-Channel: web" \
+  --output "${TMP_DIR}/vat_skill_files.json" \
+  "http://${BRAIN_HOST}:${BRAIN_PORT}/skills/accounting-vat-return/files"
 python3 - "${TMP_DIR}/skills.json" "${TMP_DIR}/skill_files.json" \
-  "${TMP_DIR}/law_skill_files.json" <<'PY'
+  "${TMP_DIR}/law_skill_files.json" "${TMP_DIR}/vat_skill_files.json" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -150,6 +154,7 @@ skills_payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected = {
     "accounting-workbook-audit": "scripts/audit_workbook.py",
     "accounting-law-watch": "scripts/watch_official_documents.py",
+    "accounting-vat-return": "scripts/vat_return_draft.py",
 }
 for name in expected:
     matches = [item for item in skills_payload["skills"] if item["name"] == name]
@@ -161,7 +166,7 @@ for name, file_path in zip(expected, sys.argv[2:]):
     paths = {item["path"] for item in files_payload["files"]}
     assert {"SKILL.md", expected[name]} <= paths, (name, paths)
 
-print("[smoke] PASS: backend lists two bundled accounting Skills and their CLIs")
+print("[smoke] PASS: backend lists three bundled accounting Skills and their CLIs")
 PY
 
 echo "[smoke] starting web frontend on ${WEB_HOST}:${WEB_PORT}"

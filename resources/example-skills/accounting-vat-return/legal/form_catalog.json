@@ -1,0 +1,136 @@
+{
+  "catalog_schema_version": 1,
+  "checked_on": "2026-11-21",
+  "subject": "monthly_or_quarterly_vat_return",
+  "filing_form": {
+    "form_number": "01/GTGT",
+    "status": "official_pdf_template_identified; period_and_field_mapping_review_required; no_auto_selection",
+    "versions": [
+      {
+        "instrument": "80/2021/TT-BTC",
+        "annex": "Phụ lục II",
+        "issued_on": "2021-09-29",
+        "effective_from": "2022-01-01",
+        "official_source": "https://congbao.chinhphu.vn/van-ban/thong-tu-so-80-2021-tt-btc-34774/37496.htm",
+        "official_consolidated_form_reference": "https://congbao.chinhphu.vn/tai-ve-van-ban-so-15-vbhn-btc-42004-50395",
+        "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/148700",
+        "verified_form_items": ["01a", "01b", "11a", "11b", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "33", "34", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_purchase_field_relationships": {
+          "source": "https://congbaocdn.chinhphu.vn/CongBaoCP/VanBan/2024/5/42004/50395-1-2024717-71815-vbhn-btc.pdf",
+          "official_attachment": "https://congbao.cdnchinhphu.vn/CongBaoCP/VanBan/2021/9/34774/37499-1-2021969-97080-2021-tt-btc.pdf",
+          "printed_form_page": 19,
+          "total_purchase_value": "23",
+          "imported_purchase_value_subset": "23a",
+          "total_purchase_vat": "24",
+          "imported_purchase_vat_subset": "24a",
+          "relationship": "23a is included in 23; 24a is included in 24; do not add either subset to its total a second time"
+        },
+        "verified_form_formulas": {
+          "27": "29 + 30 + 32 + 32a",
+          "28": "31 + 33",
+          "34": "26 + 27",
+          "35": "28",
+          "36": "35 - 25",
+          "40a": "36 - 22 + 37 - 38 - 39a",
+          "40": "40a - 40b",
+          "41": "36 - 22 + 37 - 38 - 39a",
+          "43": "41 - 42"
+        },
+        "period_use": "The official consolidated form text confirms 01/GTGT in TT80 Appendix II. For periods before 2026-07-01, also account for TT40/2025 and TT94/2025 address-field updates; TT21/2026 replaces 02/TNDN and 05/TNDN, not 01/GTGT. Filing-period transition and taxpayer case still require human review; no automatic selection.",
+        "verified_amendment_notes": [
+          "40/2025/TT-BTC updates 01/GTGT address labels: [11a] becomes xã/phường/đặc khu, removes the district field [11b], and updates related notes.",
+          "94/2025/TT-BTC updates TT80 forms, including the administrative-address wording introduced by TT40; it does not replace 01/GTGT or add personal-ID fields to that organizational return.",
+          "21/2026/TT-BTC expressly replaces 02/TNDN and 05/TNDN forms; its replacement list does not include 01/GTGT."
+        ]
+      },
+      {
+        "instrument": "89/2026/TT-BTC",
+        "annex": "Phụ lục I",
+        "issued_on": "2026-06-30",
+        "effective_from": "2026-07-01",
+        "official_source": "https://vanban.chinhphu.vn/?docid=218974&pageid=27160",
+        "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
+        "official_question_reference_only": "https://m-portal.mof.gov.vn/hoidapcstc/home/cthoidap/165862",
+        "correction_reference": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
+        "period_use": "Official Government metadata gives an effective date of 2026-07-01. The signed official attachment was checked directly: Annex I, printed page 241 contains form 01/GTGT, including month/quarter period, field [32b], field [34a], and the updated totals formulas. Use for a tax period only after transition and taxpayer-case review; no automatic selection.",
+        "verified_form_page": 241,
+        "verified_form_items": ["01a", "01b", "11a", "11c", "23", "23a", "24", "24a", "25", "26", "27", "28", "29", "30", "31", "32", "32a", "32b", "33", "34", "34a", "35", "36", "37", "38", "39a", "40a", "40b", "40", "41", "42", "43"],
+        "verified_purchase_field_relationships": {
+          "source": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
+          "official_attachment": "https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/7/89-btc.signed.pdf",
+          "printed_form_page": 241,
+          "total_purchase_value": "23",
+          "imported_purchase_value_subset": "23a",
+          "total_purchase_vat": "24",
+          "imported_purchase_vat_subset": "24a",
+          "relationship": "23a is included in 23; 24a is included in 24; do not add either subset to its total a second time"
+        },
+        "verified_form_formulas": {
+          "27": "29 + 30 + 32 + 32a - 32b",
+          "28": "31 + 33",
+          "34": "26 + 27 + 34a",
+          "35": "28",
+          "36": "35 - 25",
+          "40a": "36 - 22 + 37 - 38 - 39a",
+          "40": "40a - 40b",
+          "41": "36 - 22 + 37 - 38 - 39a",
+          "43": "41 - 42"
+        },
+        "verified_form_constraints": ["40a >= 0", "40b <= 40a", "42 <= 41", "41 <= 0"],
+        "official_attachment_checked": true
+      }
+    ],
+    "amendment_chain_to_review": [
+      {
+        "instrument": "40/2025/TT-BTC",
+        "issued_on": "2025-06-13",
+        "effective_from": "2025-07-01",
+        "official_source": "https://vanban.chinhphu.vn/?docid=214405&pageid=27160",
+        "review_status": "official_attachment_reviewed; 01_GTGT address field [11a] updated to xã/phường/đặc khu and district field [11b] removed; tax-period and taxpayer scope still require review"
+      },
+      {
+        "instrument": "94/2025/TT-BTC",
+        "issued_on": "2025-10-14",
+        "effective_from": "2025-10-14",
+        "official_source": "https://vanban.chinhphu.vn/?docid=215644&pageid=27160",
+        "review_status": "official_attachment_reviewed; updates TT80 form information and administrative-area wording; no replacement of 01_GTGT identified; period-specific legal effect still requires review"
+      },
+      {
+        "instrument": "21/2026/TT-BTC",
+        "issued_on": "2026-03-17",
+        "effective_from": "2026-03-17",
+        "official_source": "https://vanban.chinhphu.vn/?docid=217241&pageid=27160&typegroupid=6",
+        "review_status": "official_attachment_reviewed; expressly replaces 02/TNDN and 05/TNDN, not 01_GTGT; other period rules still require review"
+      },
+      {
+        "instrument": "2551/QĐ-BTC",
+        "issued_on": "2026-09-15",
+        "effective_from": "2026-09-15",
+        "official_source": "https://congbao.chinhphu.vn/van-ban/quyet-dinh-so-2551-qd-btc-470485.htm",
+        "review_status": "official_attachment_checked; correction is to the list of replaced forms in Article 99; 01_GTGT is not listed in the corrected form names; no mapping change is inferred from this correction"
+      },
+      {
+        "instrument": "110/2026/TT-BTC",
+        "issued_on": "2026-07-28",
+        "effective_from": "2026-09-12",
+        "official_source": "https://vanban.chinhphu.vn/?docid=219049&pageid=27160",
+        "official_full_text_source": "https://xaydungchinhsach.chinhphu.vn/thong-tu-so-110-2026-tt-btc-bai-bo-22-thong-tu-va-3-quyet-dinh-trong-linh-vuc-thue-tu-12-9-2026-119260803170925694.htm",
+        "review_status": "official_Government_full_text_lists_22_repealed_circulars_and_3_decisions; list_does_not_include_TT80_or_TT89; no_01_GTGT_replacement_identified; no_form_or_period_mapping_change_inferred"
+      }
+    ],
+    "related_annexes": {
+      "status": "official_inventory_identified_applicability_review_required",
+      "official_forms_in_tt89_annex_i": [
+        {"form_number": "01-2/GTGT", "scope": "VAT allocation for hydropower activities"},
+        {"form_number": "01-3/GTGT", "scope": "VAT allocation for digital lottery activities"},
+        {"form_number": "01-6/GTGT", "scope": "VAT allocation for activities other than hydropower and digital lottery"},
+        {"form_number": "01-7/GTGT", "scope": "Input VAT allocation to telecom business branches"},
+        {"form_number": "01-8/GTGT", "scope": "VAT refund information; attached to 01/GTGT or 02/GTGT as applicable"}
+      ],
+      "note": "Official Annex I form inventory was checked. Whether a taxpayer must use an annex depends on the taxpayer's activity, locations, investment/refund facts and applicable period; no annex is selected automatically. Field mapping for these annexes is NOT STARTED."
+    },
+    "xlsx_template_mapping": "NOT_STARTED",
+    "xml_schema": "NOT_STARTED_NOT_VERIFIED",
+    "auto_form_selection": false
+  }
+}

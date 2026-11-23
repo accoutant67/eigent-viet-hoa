@@ -1,0 +1,3 @@
+invoice_date,seller_tax_id,buyer_tax_id,invoice_series,invoice_number,net_amount,tax_rate,tax_amount,gross_amount,status
+2026-08-12,0100000001,0300000001,AA/26E,00017,1000,5%,50,1050,Bình thường
+2026-08-13,0100000002,0100000001,BB/26E,00018,2000,10%,200,2200,Bình thường
