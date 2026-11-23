@@ -36,7 +36,7 @@ def _set(root: ET.Element, path: str, value: str) -> None:
 
 
 def _valid_quarter_bounds(start: date, end: date) -> bool:
-    if start.month not in {1, 4, 7, 10}:
+    if start.day != 1 or start.month not in {1, 4, 7, 10}:
         return False
     end_month = start.month + 2
     end_year = start.year
@@ -78,7 +78,11 @@ def export_01_gtgt_xml(draft: dict[str, Any], destination: str | Path) -> Path:
         raise HtkkXmlExportError("Missing or invalid filing-period start/end dates.") from exc
     period_type = period.get("type")
     if period_type == "month":
-        if (start.year, start.month) != (end.year, end.month):
+        if (
+            start.day != 1
+            or (start.year, start.month) != (end.year, end.month)
+            or end.day != calendar.monthrange(start.year, start.month)[1]
+        ):
             raise HtkkXmlExportError("Monthly period start/end do not describe one calendar month.")
         cycle_type = "M"
         month_value = f"{start.month:02d}/{start.year:04d}"
