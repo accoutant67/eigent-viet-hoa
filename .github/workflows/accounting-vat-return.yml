@@ -43,6 +43,15 @@ jobs:
         run: python -m unittest discover -s resources/example-skills/accounting-vat-return/tests -p 'test_*.py' -v
       - name: Run VAT CLI end-to-end smoke
         run: python resources/example-skills/accounting-vat-return/tests/smoke_cli.py
+      - name: Generate synthetic HTKK monthly and quarterly XML demos
+        run: python resources/example-skills/accounting-vat-return/tests/generate_htkk_xml_demo.py --output-dir htkk-01-gtgt-xml-demo
+      - name: Upload synthetic HTKK XML demo files and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: htkk-01-gtgt-xml-demo-${{ github.sha }}
+          path: htkk-01-gtgt-xml-demo/
+          if-no-files-found: error
+          retention-days: 30
       - name: Run law-watch change detection and regression fixtures
         run: python -m unittest discover -s resources/example-skills/accounting-law-watch/tests -p 'test_*.py' -v
       - name: Run law-watch fixture CLI smoke
