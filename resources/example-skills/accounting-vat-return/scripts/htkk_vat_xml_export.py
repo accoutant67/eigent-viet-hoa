@@ -142,6 +142,10 @@ def export_01_gtgt_xml(draft: dict[str, Any], destination: str | Path) -> Path:
         target.text = str(integer_amount)
 
     output = Path(destination)
+    # Never let an output path (including a symlinked path) replace the bundled
+    # reference template used to produce this draft.
+    if output.resolve() == template_path.resolve():
+        raise HtkkXmlExportError("Refusing to overwrite the bundled HTKK source template.")
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
     try:
