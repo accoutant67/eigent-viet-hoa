@@ -1767,6 +1767,8 @@ def write_draft(
     destination = Path(output_path)
     output_format = destination.suffix.casefold()
     if output_format not in {".json", ".xlsx", ".xml"}:
+        if destination.exists():
+            raise VatDraftError("Không được ghi đè tệp nguồn; chỉ xuất JSON, XLSX nội bộ hoặc XML nháp 01/GTGT.")
         raise VatDraftError("Chỉ xuất JSON, XLSX nội bộ hoặc XML nháp 01/GTGT.")
     source_name = str(draft.get("source_file", ""))
     if (
