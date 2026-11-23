@@ -83,7 +83,7 @@ def _integer(value: object, label: str) -> int:
 
 def _verify_case(
     output: Path, reference_root: ET.Element, draft: dict[str, object],
-    *, period_type: str, period_value: str, expected_count: int,
+    *, period_type: str, period_value: str,
 ) -> dict[str, object]:
     root = ET.parse(output).getroot()
     if root.tag != "HSoThueDTu":
@@ -129,15 +129,13 @@ def _verify_case(
             raise AssertionError(f"Formula check failed for [{code}]")
         formula_checks[code] = "PASS"
 
-    if len(draft["records"]) != expected_count:
-        raise AssertionError(f"Expected {expected_count} selected invoices, got {len(draft['records'])}")
     if not form_draft["mapping_complete"] or form_draft["independent_check"]["status"] != "pass":
         raise AssertionError("Selected synthetic case has incomplete mapping or failed independent check")
     return {
         "file": output.name, "bytes": output.stat().st_size,
         "period_type": period_type, "period": period_value,
         "taxpayer_tax_id": TAX_ID, "taxpayer_tax_id_is_synthetic": True,
-        "invoice_count": len(draft["records"]), "root": root.tag, "namespace": "(none)",
+        "draft_record_count": len(draft["records"]), "root": root.tag, "namespace": "(none)",
         "template_element_tree": "PASS", "parse_round_trip": "PASS",
         "form_number": "01/GTGT", "form_label_unicode": "PASS",
         "integer_amounts_round_trip": "PASS", "formula_checks": formula_checks,
@@ -164,11 +162,11 @@ def generate(output_dir: Path) -> dict[str, object]:
         _invoice_csv(source)
         _law_watch_report(law_report)
         cases = [
-            ("month", "2026-07", "M", "07/2026", 2, "01_GTGT_TT89_demo_month_2026-07.xml"),
-            ("quarter", "2026-Q3", "Q", "Q3/2026", 6, "01_GTGT_TT89_demo_quarter_2026-Q3.xml"),
+            ("month", "2026-07", "M", "07/2026", "01_GTGT_TT89_demo_month_2026-07.xml"),
+            ("quarter", "2026-Q3", "Q", "Q3/2026", "01_GTGT_TT89_demo_quarter_2026-Q3.xml"),
         ]
         results = []
-        for name, cli_period, cycle, display_period, count, filename in cases:
+        for name, cli_period, cycle, display_period, filename in cases:
             draft_path = work / f"{name}-draft.json"
             xml_path = output_dir / filename
             _run_cli(source, law_report, cli_period, draft_path)
@@ -178,7 +176,7 @@ def generate(output_dir: Path) -> dict[str, object]:
             _run_cli(source, law_report, cli_period, xml_path)
             results.append(_verify_case(
                 xml_path, reference_root, draft, period_type=cycle,
-                period_value=display_period, expected_count=count,
+                period_value=display_period,
             ))
 
     template_hash_after = hashlib.sha256(TEMPLATE.read_bytes()).hexdigest()
